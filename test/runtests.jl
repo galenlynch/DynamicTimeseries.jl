@@ -15,6 +15,7 @@ using Base.Test
 
         dts = DynamicTs(A, 10, 0)
         (xs, mm) = downsamp_req(dts, 0, 1, 10)
+        (xs, mm) = downsamp_req(dts, 1000, 1001, 10) # Past signal
     end
 
     @testset "util" begin

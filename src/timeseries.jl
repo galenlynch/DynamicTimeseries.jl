@@ -49,9 +49,11 @@ function DynamicTs(
 end
 
 function downsamp_req(dts::DynamicTs, x_start::Real, x_end::Real, maxpoints::Integer)
+    na = length(dts.input)
+
     # Find bounding indices
-    i_start = x_to_ndx(x_start, dts.fs, dts.offset)
-    i_end = x_to_ndx(x_end, dts.fs, dts.offset)
+    i_start = clipind(x_to_ndx(x_start, dts.fs, dts.offset), na)
+    i_end = clipind(x_to_ndx(x_end, dts.fs, dts.offset), na)
 
     # Calculate binsize
     npt = n_ndx(i_start, i_end)
