@@ -47,7 +47,6 @@ function DynamicTs(
 ) where {T <: Number, A <: AbstractVector{T}}
     return DynamicTs{T, A}(input, convert(Float64, fs), convert(Float64, offset))
 end
-DynamicTs(input::OEContArray, offset::Real = 0) = DynamicTs(input, input.contfile.header.samplerate, offset)
 
 function downsamp_req(dts::DynamicTs, x_start::Real, x_end::Real, maxpoints::Integer)
     # Find bounding indices
