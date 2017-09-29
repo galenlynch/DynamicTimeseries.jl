@@ -2,8 +2,11 @@ using GLTimeseries
 using Base.Test
 
 @testset "GLTimeseries"  begin
-    A = ones(1000)
+    const npt = 1000
+    const A = ones(npt)
     A[1:2:end] = 2
+
+    const fs = 10
 
     @testset "timeseries" begin
         mm = MaxMin(A, 10)
@@ -16,6 +19,17 @@ using Base.Test
         dts = DynamicTs(A, 10, 0)
         (xs, mm) = downsamp_req(dts, 0, 1, 10)
         (xs, mm) = downsamp_req(dts, 1000, 1001, 10) # Past signal
+
+        const maxpt = 10
+        cdt = CachingDynamicTs(A, fs, 0, maxpt)
+        (xs, mm) = downsamp_req(cdt, 0, 1, 100)
+        println("Got ", length(mm), " samples")
+        (xs, mm) = downsamp_req(cdt, 0, 100, 100)
+        println("Got ", length(mm), " samples")
+        (xs, mm) = downsamp_req(cdt, 0, 10, 50)
+        println("Got ", length(mm), " samples")
+        (xs, mm) = downsamp_req(cdt, 0, 100, 10)
+        println("Got ", length(mm), " samples")
     end
 
     @testset "util" begin

@@ -9,6 +9,8 @@ export
     # Types
     MaxMin,
     DynamicTs,
+    DynamicDownsampler,
+    CachingDynamicTs,
     Downsampler,
 
     # Functions
