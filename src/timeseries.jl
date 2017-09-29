@@ -90,7 +90,7 @@ function downsamp_req(dts::DynamicTs, x_start::Real, x_end::Real, reqpoints::Int
 
     # Calculate binsize
     npt = n_ndx(i_begin, i_end)
-    binsize = convert(Int, ceil(npt / reqpoints))
+    binsize = cld(npt, reqpoints)
 
     # Clip data
     subview = view(dts.input, i_begin:i_end)

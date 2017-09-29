@@ -40,6 +40,11 @@ using Base.Test
         @test length(mm) == 11
     end
 
+    @testset "spectrogram" begin
+        ds = DynamicSpectrogram(A, 0, fs)
+        (s, f, t) = downsamp_req(ds, 0, 100, 2)
+    end
+
     @testset "util" begin
         @test extent(A) == 1.0
         @test extent([A, A]) == [1.0, 1.0]

@@ -3,13 +3,16 @@ module GLTimeseries
 import Base: linearindexing, length, size, getindex, setindex!
 import GLUtilities: bin_bounds
 
-using GLUtilities
+using
+    GLUtilities,
+    DSP
 
 export
     # Types
     MaxMin,
     DynamicTs,
     DynamicDownsampler,
+    DynamicSpectrogram,
     CachingDynamicTs,
     Downsampler,
 
@@ -21,5 +24,6 @@ export
 
 include("util.jl")
 include("timeseries.jl")
+include("spectrogram.jl")
 
 end # module
