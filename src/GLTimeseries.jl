@@ -15,7 +15,9 @@ export
 
     # Functions
     extent,
-    downsamp_req
+    downsamp_req,
+    clean,
+    scavenge_cache
 
 include("util.jl")
 include("timeseries.jl")

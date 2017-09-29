@@ -110,73 +110,155 @@ immutable CachingDynamicTs{T<:Number, A<:AbstractVector{T}} <: DynamicDownsample
     input::A
     fs::Float64
     offset::Float64
-    minsamp::Int
     cachefiles::Vector{Array{T, 2}}
+    cachepaths::Vector{String}
     function CachingDynamicTs{T, A}(
         input::A,
         fs::Float64,
         offset::Float64,
-        minsamp::Int
+        sizehint::Int,
+        autoclean::Bool = true
     ) where {T<:Number, A<:AbstractVector{T}}
         nsamp = length(input)
-        if minsamp < nsamp
-            ndecade = convert(Int, ceil(log10(nsamp / minsamp)))
+        if sizehint < nsamp
+            # Preallocate
+            ndecade = convert(Int, ceil(log10(nsamp / sizehint)))
             cachefiles = Vector{Array{T, 2}}(ndecade)
+            cachepaths = Vector{String}(ndecade)
 
             # Make first cache file
-            (path, io) = mktemp()
-            mm = MaxMin(input, 10)
-            for (binmin, binmax) in mm
-                write(io, binmin, binmax)
-            end
-            close(io)
-            ior = open(path, "r")
-            cachefiles[1] = Mmap.mmap(ior, Array{T, 2}, (2, length(mm)))
-
+            (cachepaths[1], npair) = write_cache_file(input, autoclean)
+            cachefiles[1] = open_cache_file(T, npair, cachepaths[1])
             # Make subsequent cache files
             for dno = 2:ndecade
-                nlast = size(cachefiles[dno - 1], 2)
-                nd = cld(nlast, 10)
-                mm = MaxMin(cachefiles[dno - 1], 10)
-                (path, io) = mktemp()
-                for extremum in mm
-                    write(io, extremum...)
+                try
+                    (cachepaths[dno], npair) = write_cache_file(cachefiles[dno - 1], autoclean)
+                    cachefiles[dno] = open_cache_file(T, npair, cachepaths[dno])
+                catch
+                    for i = 1:(dno - 1)
+                        rm(cachepaths[i])
+                    end
+                    rethrow()
                 end
-                close(io)
-                ior = open(path, "r")
-                cachefiles[dno] = Mmap.mmap(ior, Array{T, 2}, (2, nd))
             end
+        else
+            cachefiles = Vector{Array{T, 2}}()
+            cachepaths = Vector{String}()
         end
-        return new(input, fs, offset, minsamp, cachefiles)
+        return new(input, fs, offset, cachefiles, cachepaths)
+    end
+    function CachingDynamicTs{T, A}(
+        input::A,
+        fs::Float64,
+        offset::Float64,
+        cachepaths::Vector{String},
+        cachelengths::Vector{Int},
+        autoclean::Bool = true
+    ) where {T<:Number, A<:AbstractVector{T}}
+        # Preallocate
+        ndecade = length(cachepaths)
+        cachefiles = Vector{Array{T, 2}}(ndecade)
+        try
+            for dno in 1:ndecade
+                cachefiles[dno] = open_cache_file(T, cachelengths[dno], cachepaths[dno])
+                autoclean && atexit(() -> rm(cachepaths[dno]))
+            end
+        catch
+            autoclean && foreach(rm, cachepaths)
+            retrhow()
+        end
+        return new(input, fs, offset, cachefiles, cachepaths)
     end
 end
 function CachingDynamicTs(
     input::A,
     fs::Real,
     offset::Real = 0,
-    minsamp::Integer = 100
+    sizehint::Integer = 300, # x dimension in pixels of a small window?
+    autoclean::Bool = true
 ) where {T <: Number, A <: AbstractVector{T}}
     return CachingDynamicTs{T, A}(
         input,
         convert(Float64, fs),
         convert(Float64, offset),
-        convert(Int, minsamp)
+        convert(Int, sizehint),
+        autoclean
     )
+end
+function CachingDynamicTs(
+    input::A,
+    fs::Real,
+    offset::Real,
+    cachepaths::Vector{String},
+    cachelengths::Vector{Int},
+    autoclean::Bool = true
+) where {T <: Number, A <: AbstractVector{T}}
+    return CachingDynamicTs{T, A}(
+        input,
+        convert(Float64, fs),
+        convert(Float64, offset),
+        cachepaths,
+        cachelengths,
+        autoclean
+    )
+end
+
+function write_cache_file(
+    input::A,
+    autoclean::Bool = true
+) where {T<: Number, N, A<:AbstractArray{T, N}}
+    mm = MaxMin(input, 10)
+    (path, io) = mktemp()
+    try
+        for extremum in mm
+            write(io, extremum...)
+        end
+    catch
+        close(io)
+        rm(path)
+        rethrow()
+    end
+    close(io)
+    autoclean && atexit(() -> rm(path))
+    npair = length(mm)
+    return (path, npair)
+end
+
+function open_cache_file(
+    ::Type{T},
+    npair::Integer,
+    path::AbstractString
+) where T
+    cachearray = open(path, "r") do ior
+        Mmap.mmap(ior, Array{T, 2}, (2, npair))
+    end
+    return cachearray
+end
+
+clean(a::CachingDynamicTs) = foreach(rm, a.cachepaths)
+
+function scavenge_cache(a::CachingDynamicTs)
+    ncache = length(a.cachefiles)
+    cachelengths = Vector{Int}(ncache)
+    for (i, cachefile) in enumerate(a.cachefiles)
+        cachelengths[i] = size(cachefile, 2)
+    end
+    return (a.cachepaths, cachelengths)
 end
 
 function downsamp_req(
     dts::C,
     x_start::Real,
     x_end::Real,
-    rawreq::Integer
+    reqpts::Integer
 ) where {T<:Number, A<:AbstractVector, C<:CachingDynamicTs{T,A}}
     # Err on the side of too many
-    reqpts = max(rawreq, dts.minsamp)
     nin = length(dts.input)
     i_begin = clipind(x_to_ndx(x_start, dts.fs, dts.offset), nin)
     i_end = clipind(x_to_ndx(x_end, dts.fs, dts.offset), nin)
     nbase = n_ndx(i_begin, i_end)
-    decno = convert(Int, floor(log10(nbase / reqpts)))
+    ncache = length(dts.cachefiles)
+    decno = min(convert(Int, floor(log10(nbase / reqpts))), ncache)
     if decno >= 1
         di_begin = decade_ndx_conversion(i_begin, decno)
         di_end = decade_ndx_conversion(i_end, decno)

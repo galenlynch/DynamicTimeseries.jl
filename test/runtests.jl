@@ -23,13 +23,21 @@ using Base.Test
         const maxpt = 10
         cdt = CachingDynamicTs(A, fs, 0, maxpt)
         (xs, mm) = downsamp_req(cdt, 0, 1, 100)
-        println("Got ", length(mm), " samples")
+        @test length(mm) == 11
         (xs, mm) = downsamp_req(cdt, 0, 100, 100)
-        println("Got ", length(mm), " samples")
+        @test length(mm) == 100
         (xs, mm) = downsamp_req(cdt, 0, 10, 50)
-        println("Got ", length(mm), " samples")
+        @test length(mm) == 34
         (xs, mm) = downsamp_req(cdt, 0, 100, 10)
-        println("Got ", length(mm), " samples")
+        @test length(mm) == 10
+        cdt = CachingDynamicTs(A, fs, 0, maxpt, false)
+        clean(cdt)
+        cdt = 0
+        cdt = CachingDynamicTs(A, fs, 0, maxpt, false)
+        (cachepaths, cachelengths) = scavenge_cache(cdt)
+        cdt2 = CachingDynamicTs(A, fs, 0, cachepaths, cachelengths)
+        (xs, mm) = downsamp_req(cdt, 0, 1, 100)
+        @test length(mm) == 11
     end
 
     @testset "util" begin
