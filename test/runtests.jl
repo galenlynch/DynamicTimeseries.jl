@@ -31,13 +31,20 @@ using Base.Test
         (xs, mm) = downsamp_req(cdt, 0, 100, 10)
         @test length(mm) == 10
         cdt = CachingDynamicTs(A, fs, 0, maxpt, false)
-        clean(cdt)
-        cdt = 0
-        cdt = CachingDynamicTs(A, fs, 0, maxpt, false)
-        (cachepaths, cachelengths) = scavenge_cache(cdt)
-        cdt2 = CachingDynamicTs(A, fs, 0, cachepaths, cachelengths)
-        (xs, mm) = downsamp_req(cdt, 0, 1, 100)
-        @test length(mm) == 11
+        (files, lengths) = write_cache_files(A, 10)
+        println(files)
+        println(lengths)
+        cachedir = tempdir()
+        (files, lengths) = write_cache_files(cachedir, 1, true, A, 10)
+        println(files)
+        println(lengths)
+        cachearr = open_cache_files(Int, cachedir, 1)
+
+        c = 5
+        mds = MappedDynamicDownsampler(cdt, (xs, ys) -> map((x2) -> (x2[1] + c, x2[2] + c), ys))
+        (xs, ys) = downsamp_req(mds, 0, 100, 10)
+        println(mm)
+        println(ys)
     end
 
     @testset "spectrogram" begin

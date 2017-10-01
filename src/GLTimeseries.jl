@@ -1,7 +1,8 @@
+__precompile__()
 module GLTimeseries
 
 import Base: linearindexing, length, size, getindex, setindex!
-import GLUtilities: bin_bounds
+import GLUtilities: bin_bounds, duration
 
 using
     GLUtilities,
@@ -14,13 +15,17 @@ export
     DynamicDownsampler,
     DynamicSpectrogram,
     CachingDynamicTs,
+    MappedDynamicDownsampler,
     Downsampler,
 
     # Functions
     extent,
+    duration,
     downsamp_req,
-    clean,
-    scavenge_cache
+    write_cache_files,
+    write_cache_file,
+    open_cache_files,
+    open_cache_file
 
 include("util.jl")
 include("timeseries.jl")
