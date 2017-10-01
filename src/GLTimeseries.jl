@@ -31,7 +31,8 @@ export
     shift_extrema,
     shift_extrema!,
     make_shifter,
-    cache_reg
+    cache_reg,
+    parse_cache_filenames
 
 include("util.jl")
 include("timeseries.jl")

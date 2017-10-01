@@ -94,25 +94,30 @@ function open_cache_files(
     return cachearr
 end
 
-
-function open_cache_files(::Type{T}, cachedir::AbstractString, fid::Integer) where T
-    fs = readdir()
-    ms = match.(cache_reg(fid), fs)
-    matches = filter((x) -> x != nothing, ms)
+function parse_cache_filenames(cachedir::AbstractString, fid::Integer)
+    matches = dir_match_files(cache_reg(fid), cachedir)
     nm = length(matches)
 
-    filenos = Vector{Int}(nm)
     lengths = Vector{Int}(nm)
-    scratch = Vector{String}(nm)
     fpaths = Vector{String}(nm)
+    if nm > 0
+        filenos = Vector{Int}(nm)
+        scratch = Vector{String}(nm)
 
-    map!((x) -> x[1], scratch, matches)
-    filenos .= parse.(Int, scratch)
-    map!((x) -> x[2], scratch, matches)
-    lengths .= parse.(Int, scratch)
-    map!((x) -> x.match, scratch, matches)
-    fpaths .= joinpath.(cachedir, scratch)
-    fpaths = fpaths[filenos]
-    lengths = lengths[filenos]
+        map!((x) -> x[1], scratch, matches)
+        filenos .= parse.(Int, scratch)
+        map!((x) -> x[2], scratch, matches)
+        lengths .= parse.(Int, scratch)
+        map!((x) -> x.match, scratch, matches)
+        fpaths .= joinpath.(cachedir, scratch)
+        fpaths = fpaths[filenos]
+        lengths = lengths[filenos]
+    end
+
+    return (fpaths, lengths)
+end
+
+function open_cache_files(::Type{T}, cachedir::AbstractString, fid::Integer) where T
+    (fpaths, lengths) = parse_cache_filenames(cachedir, fid)
     return open_cache_files(T, lengths, fpaths, false)
 end
