@@ -31,7 +31,7 @@ function DynamicSpectrogram(
     )
 end
 
-function downsamp_req(ds::DynamicSpectrogram, xb::Real, xe::Real, npt::Integer)
+function downsamp_req(ds::DynamicSpectrogram, xb, xe, npt::Integer)
     # test
     nin = length(ds.input)
     (ib, ie) = clipind.(x_to_ndx.([xb, xe], ds.fs, ds.offset), nin)
@@ -60,9 +60,5 @@ function downsamp_req(ds::DynamicSpectrogram, xb::Real, xe::Real, npt::Integer)
     S = spectrogram(sel_sig, win_l_final, npt_overlap; fs = ds.fs, window = window)
     first_x = ndx_to_x(ib, ds.fs, ds.offset)
     times = S.time + first_x
-    return (S.power, collect(S.freq), times)
+    return (times, (collect(S.freq), S.power))
 end
-function downsamp_req(ds::DynamicSpectrogram, x_start::Real, x_end::Real, reqpoints::AbstractFloat)
-    return downsamp_req(ds, x_start, x_end, convert(Int, floor(reqpoints)))
-end
-

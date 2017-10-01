@@ -41,7 +41,7 @@ using Base.Test
         cachearr = open_cache_files(Int, cachedir, 1)
 
         c = 5
-        mds = MappedDynamicDownsampler(cdt, (xs, ys) -> map((x2) -> (x2[1] + c, x2[2] + c), ys))
+        mds = MappedDynamicDownsampler(cdt, make_shifter(c))
         (xs, ys) = downsamp_req(mds, 0, 100, 10)
         println(mm)
         println(ys)
