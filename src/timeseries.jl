@@ -90,8 +90,8 @@ function downsamp_req(dts::DynamicTs, x_start, x_end, reqpoints::Integer)
     nin = length(dts.input)
 
     # Find bounding indices
-    i_begin = clipind(x_to_ndx(x_start, dts.fs, dts.offset), nin)
-    i_end = clipind(x_to_ndx(x_end, dts.fs, dts.offset), nin)
+    i_begin = clipind(t_to_ndx(x_start, dts.fs, dts.offset), nin)
+    i_end = clipind(t_to_ndx(x_end, dts.fs, dts.offset), nin)
 
     # Calculate binsize
     npt = n_ndx(i_begin, i_end)
@@ -102,8 +102,8 @@ function downsamp_req(dts::DynamicTs, x_start, x_end, reqpoints::Integer)
 
     # Create downsampled data
     ys = MaxMin(subview, binsize)
-    bin_start_x = ndx_to_x(i_begin, dts.fs, dts.offset)
-    xs = ndx_to_x(bin_center(bin_bounds(ys)), dts.fs, bin_start_x)
+    bin_start_x = ndx_to_t(i_begin, dts.fs, dts.offset)
+    xs = ndx_to_t(bin_center(bin_bounds(ys)), dts.fs, bin_start_x)
 
     return (xs, ys)
 end
@@ -114,14 +114,14 @@ immutable CachingDynamicTs{S<:Number, A<:AbstractVector{S}} <: DynamicDownsample
     input::A
     fs::Float64
     offset::Float64
-    cachefiles::Vector{Array{S, 2}}
+    cachearrays::Vector{Array{S, 2}}
     function CachingDynamicTs{S,A}(
         input::A,
         fs::Float64,
         offset::Float64,
-        cachefiles::Vector{Array{S, 2}},
+        cachearrays::Vector{Array{S, 2}},
     ) where {S<:Number, A<:AbstractVector{S}}
-        return new(input, fs, offset, cachefiles)
+        return new(input, fs, offset, cachearrays)
     end
 end
 function CachingDynamicTs(
@@ -150,12 +150,11 @@ function CachingDynamicTs(
 end
 
 function downsamp_req(dts::CachingDynamicTs, x_start, x_end, reqpts::Integer)
-    # Err on the side of too many
     nin = length(dts.input)
-    i_begin = clipind(x_to_ndx(x_start, dts.fs, dts.offset), nin)
-    i_end = clipind(x_to_ndx(x_end, dts.fs, dts.offset), nin)
+    i_begin = clipind(t_to_ndx(x_start, dts.fs, dts.offset), nin)
+    i_end = clipind(t_to_ndx(x_end, dts.fs, dts.offset), nin)
     nbase = n_ndx(i_begin, i_end)
-    ncache = length(dts.cachefiles)
+    ncache = length(dts.cachearrays)
     decno = min(floor(Int, log10(nbase / reqpts)), ncache)
     if decno >= 1
         di_begin = decade_ndx_conversion(i_begin, decno)
@@ -164,14 +163,14 @@ function downsamp_req(dts::CachingDynamicTs, x_start, x_end, reqpts::Integer)
         nsubsamp = n_ndx(di_begin, di_end)
 
         binsize = ceil(Int, nsubsamp / reqpts)
-        subview = view(dts.cachefiles[decno], di_range)
+        subview = view(dts.cachearrays[decno], di_range)
         ys = MaxMin(subview, binsize)
 
         dec_mult = 10 ^ decno
-        x_decade_adj = ndx_to_x((1 + dec_mult) / 2, dts.fs)
-        x_bin_adj = ndx_to_x(di_begin, dts.fs) * dec_mult
+        x_decade_adj = ndx_to_t((1 + dec_mult) / 2, dts.fs)
+        x_bin_adj = ndx_to_t(di_begin, dts.fs) * dec_mult
         bcs = bin_center(bin_bounds(ys)) * dec_mult
-        xs = ndx_to_x(bcs, dts.fs, x_decade_adj + x_bin_adj + dts.offset)
+        xs = ndx_to_t(bcs, dts.fs, x_decade_adj + x_bin_adj + dts.offset)
     else
         binsize = ceil(Int, nbase / reqpts)
         i_range = i_begin:i_end
@@ -180,8 +179,8 @@ function downsamp_req(dts::CachingDynamicTs, x_start, x_end, reqpts::Integer)
         subview = view(dts.input, i_range)
         ys = MaxMin(subview, binsize)
 
-        bin_start_x = ndx_to_x(i_begin, dts.fs, dts.offset)
-        xs = ndx_to_x(bin_center(bin_bounds(ys)), dts.fs, bin_start_x)
+        bin_start_x = ndx_to_t(i_begin, dts.fs, dts.offset)
+        xs = ndx_to_t(bin_center(bin_bounds(ys)), dts.fs, bin_start_x)
     end
     return (xs, ys)
 end
