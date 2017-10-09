@@ -90,8 +90,8 @@ function downsamp_req(dts::DynamicTs, x_start, x_end, reqpoints::Integer)
     nin = length(dts.input)
 
     # Find bounding indices
-    i_begin = clipind(t_to_ndx(x_start, dts.fs, dts.offset), nin)
-    i_end = clipind(t_to_ndx(x_end, dts.fs, dts.offset), nin)
+    i_begin = clip_ndx(t_to_ndx(x_start, dts.fs, dts.offset), nin)
+    i_end = clip_ndx(t_to_ndx(x_end, dts.fs, dts.offset), nin)
 
     # Calculate binsize
     npt = n_ndx(i_begin, i_end)
@@ -151,8 +151,8 @@ end
 
 function downsamp_req(dts::CachingDynamicTs, x_start, x_end, reqpts::Integer)
     nin = length(dts.input)
-    i_begin = clipind(t_to_ndx(x_start, dts.fs, dts.offset), nin)
-    i_end = clipind(t_to_ndx(x_end, dts.fs, dts.offset), nin)
+    i_begin = clip_ndx(t_to_ndx(x_start, dts.fs, dts.offset), nin)
+    i_end = clip_ndx(t_to_ndx(x_end, dts.fs, dts.offset), nin)
     nbase = n_ndx(i_begin, i_end)
     ncache = length(dts.cachearrays)
     decno = min(floor(Int, log10(nbase / reqpts)), ncache)

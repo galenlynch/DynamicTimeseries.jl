@@ -11,6 +11,7 @@ struct DynamicSpectrogram{A<:AbstractVector} <: DynamicDownsampler
         window::Vector{Float64},
         overlap::Float64
     ) where {A <: AbstractVector}
+        @assert fs > 0 "fs must be greater than zero"
         @assert 0 <= overlap < 1 "overlap must be in interval [0, 1)"
         return new(input, fs, offset, window, overlap)
     end
@@ -34,7 +35,7 @@ end
 function downsamp_req(ds::DynamicSpectrogram, xb, xe, npt::Integer; windowfun::Function = hanning)
     # test
     nin = length(ds.input)
-    (ib, ie) = clipind.(t_to_ndx.([xb, xe], ds.fs, ds.offset), nin)
+    (ib, ie) = clip_ndx.(t_to_ndx.([xb, xe], ds.fs, ds.offset), nin)
     nsel = n_ndx(ib, ie)
     win_l = length(ds.window)
     sel_sig = ds.input[ib:ie]
