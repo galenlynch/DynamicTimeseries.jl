@@ -159,18 +159,15 @@ function downsamp_req(dts::CachingDynamicTs, x_start, x_end, reqpts::Integer)
     if decno >= 1
         di_begin = decade_ndx_conversion(i_begin, decno)
         di_end = decade_ndx_conversion(i_end, decno)
-        di_range = di_begin:di_end
-        nsubsamp = n_ndx(di_begin, di_end)
+        subview = view(dts.cachearrays[decno], 1:2, di_begin:di_end)
 
-        binsize = ceil(Int, nsubsamp / reqpts)
-        subview = view(dts.cachearrays[decno], di_range)
+        nsubsamp = n_ndx(di_begin, di_end)
+        binsize = cld(nsubsamp, reqpts)
         ys = MaxMin(subview, binsize)
 
-        dec_mult = 10 ^ decno
-        x_decade_adj = ndx_to_t((1 + dec_mult) / 2, dts.fs)
-        x_bin_adj = ndx_to_t(di_begin, dts.fs) * dec_mult
-        bcs = bin_center(bin_bounds(ys)) * dec_mult
-        xs = ndx_to_t(bcs, dts.fs, x_decade_adj + x_bin_adj + dts.offset)
+        dec_idxes = bin_center(bin_bounds(ys)) + di_begin - 1
+        base_idxes = dec_ndx_to_ndx(dec_idxes, decno)
+        xs = ndx_to_t(base_idxes, dts.fs, dts.offset)
     else
         binsize = ceil(Int, nbase / reqpts)
         i_range = i_begin:i_end
@@ -188,6 +185,9 @@ end
 duration(dts::CachingDynamicTs) = duration(length(dts.input), dts.fs, dts.offset)
 
 decade_ndx_conversion(i::Integer, dec::Integer) = fld(i - 1, 10 ^ dec) + 1
+ndx_to_dec_ndx(args...) = decade_ndx_conversion(args...)
+dec_ndx_to_ndx(i::Real, dec::Integer) = bin_center(i, 10 ^ dec)
+dec_ndx_to_ndx(is::AbstractVector, dec::Integer) = bin_center.(is, 10 ^ dec)
 
 struct MappedDynamicDownsampler{D<:DynamicDownsampler} <: DynamicDownsampler
     downsampler::D
