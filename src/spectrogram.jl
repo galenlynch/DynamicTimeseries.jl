@@ -38,14 +38,17 @@ function downsamp_req(ds::DynamicSpectrogram, xb, xe, npt::Integer; windowfun::F
     (ib, ie) = clip_ndx.(t_to_ndx.([xb, xe], ds.fs, ds.offset), nin)
     nsel = n_ndx(ib, ie)
     win_l = length(ds.window)
-    sel_sig = ds.input[ib:ie]
-    win_nbase = cld(nsel, ceil(Int, (1 - ds.overlap) * win_l))
+    win_nbase = cld(nsel, ceil(Int, (1 - ds.overlap) * win_l)) # Number of windows that would be used
+
+    # Check if we have too many windows
     if win_nbase > npt
         # Too many windows: increase their size
         win_l_target = cld(nsel, ceil(Int, (1 - ds.overlap) * npt))
     else
         win_l_target = win_l
     end
+
+    # Check if we have enough data for our windows
     if nsel < win_l_target
         win_l_final = nsel
         npt_overlap = 0
@@ -53,11 +56,16 @@ function downsamp_req(ds::DynamicSpectrogram, xb, xe, npt::Integer; windowfun::F
         win_l_final = win_l_target
         npt_overlap = floor(Int, ds.overlap * win_l_final)
     end
+
+    # Check if our window function is the right size
     if length(ds.window) != win_l_final
         window = hanning(win_l_final)
     else
         window = ds.window
     end
+
+    # Select the portion of the signal in range
+    sel_sig = ds.input[ib:ie]
     S = spectrogram(sel_sig, win_l_final, npt_overlap; fs = ds.fs, window = window)
     first_x = ndx_to_t(ib, ds.fs, ds.offset)
     times = S.time + first_x
