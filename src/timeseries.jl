@@ -1,6 +1,6 @@
 abstract type Downsampler{T, N} <: AbstractArray{T, N} end
 
-immutable MaxMin{T<:Number, S, A<:AbstractArray} <: Downsampler{Tuple{T, T}, 1}
+struct MaxMin{T<:Number, S, A<:AbstractArray} <: Downsampler{Tuple{T, T}, 1}
     input::A
     binsize::Int
     function MaxMin{T, S, A}(input::A, binsize::Integer) where {T<:Number, S<:Number, A<:AbstractVector{S}}
@@ -66,7 +66,7 @@ function downsamp_req(ds::DynamicDownsampler, x_start, x_end, reqpoints::Abstrac
     return downsamp_req(ds, x_start, x_end, floor(Int, reqpoints))
 end
 
-immutable DynamicTs{A<:AbstractVector} <: DynamicDownsampler
+struct DynamicTs{A<:AbstractVector} <: DynamicDownsampler
     input::A
     fs::Float64
     offset::Float64
@@ -110,7 +110,7 @@ end
 
 duration(d::DynamicTs) = duration(length(d.input), d.fs, d.offset)
 
-immutable CachingDynamicTs{S<:Number, A<:AbstractVector{S}} <: DynamicDownsampler
+struct CachingDynamicTs{S<:Number, A<:AbstractVector{S}} <: DynamicDownsampler
     input::A
     fs::Float64
     offset::Float64
