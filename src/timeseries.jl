@@ -97,6 +97,8 @@ function downsamp_req(dts::DynamicTs, x_start, x_end, reqpoints::Integer)
     npt = n_ndx(i_begin, i_end)
     binsize = cld(npt, reqpoints)
 
+    was_downsampled = reqpoints > npt
+
     # Clip data
     subview = view(dts.input, i_begin:i_end)
 
@@ -105,7 +107,7 @@ function downsamp_req(dts::DynamicTs, x_start, x_end, reqpoints::Integer)
     bin_start_x = ndx_to_t(i_begin, dts.fs, dts.offset)
     xs = ndx_to_t(bin_center(bin_bounds(ys)), dts.fs, bin_start_x)
 
-    return (xs, ys)
+    return (xs, ys, was_downsampled)
 end
 
 duration(d::DynamicTs) = duration(length(d.input), d.fs, d.offset)
@@ -157,6 +159,7 @@ function downsamp_req(dts::CachingDynamicTs, x_start, x_end, reqpts::Integer)
     ncache = length(dts.cachearrays)
     decno = min(floor(Int, log10(nbase / reqpts)), ncache)
     if decno >= 1
+        was_downsampled = true
         di_begin = decade_ndx_conversion(i_begin, decno)
         di_end = decade_ndx_conversion(i_end, decno)
         subview = view(dts.cachearrays[decno], 1:2, di_begin:di_end)
@@ -170,6 +173,7 @@ function downsamp_req(dts::CachingDynamicTs, x_start, x_end, reqpts::Integer)
         xs = ndx_to_t(base_idxes, dts.fs, dts.offset)
     else
         binsize = ceil(Int, nbase / reqpts)
+        was_downsampled = binsize > 1
         i_range = i_begin:i_end
 
         # Clip data
@@ -179,7 +183,7 @@ function downsamp_req(dts::CachingDynamicTs, x_start, x_end, reqpts::Integer)
         bin_start_x = ndx_to_t(i_begin, dts.fs, dts.offset)
         xs = ndx_to_t(bin_center(bin_bounds(ys)), dts.fs, bin_start_x)
     end
-    return (xs, ys)
+    return (xs, ys, was_downsampled)
 end
 
 duration(dts::CachingDynamicTs) = duration(length(dts.input), dts.fs, dts.offset)
@@ -195,9 +199,9 @@ struct MappedDynamicDownsampler{D<:DynamicDownsampler} <: DynamicDownsampler
 end
 
 function downsamp_req(mdds::D, xb, xe, npts::Integer) where {D<:MappedDynamicDownsampler}
-    (xs, ys) = downsamp_req(mdds.downsampler, xb, xe, npts)
+    (xs, ys, was_downsampled) = downsamp_req(mdds.downsampler, xb, xe, npts)
     mys = mdds.fmap(ys)
-    return (xs, mys)
+    return (xs, mys, was_downsampled)
 end
 
 duration(d::MappedDynamicDownsampler) = duration(d.downsampler)

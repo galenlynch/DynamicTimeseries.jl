@@ -44,8 +44,10 @@ function downsamp_req(ds::DynamicSpectrogram, xb, xe, npt::Integer; windowfun::F
     if win_nbase > npt
         # Too many windows: increase their size
         win_l_target = cld(nsel, ceil(Int, (1 - ds.overlap) * npt))
+        was_downsamped = true
     else
         win_l_target = win_l
+        was_downsamped = false
     end
 
     # Check if we have enough data for our windows
@@ -69,5 +71,5 @@ function downsamp_req(ds::DynamicSpectrogram, xb, xe, npt::Integer; windowfun::F
     S = spectrogram(sel_sig, win_l_final, npt_overlap; fs = ds.fs, window = window)
     first_x = ndx_to_t(ib, ds.fs, ds.offset)
     times = S.time + first_x
-    return (times, (collect(S.freq), S.power))
+    return (times, (collect(S.freq), S.power), was_downsamped)
 end
