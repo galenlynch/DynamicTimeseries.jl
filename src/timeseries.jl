@@ -3,34 +3,51 @@ abstract type Downsampler{T, N} <: AbstractArray{T, N} end
 struct MaxMin{T<:Number, S, A<:AbstractArray} <: Downsampler{Tuple{T, T}, 1}
     input::A
     binsize::Int
-    function MaxMin{T, S, A}(input::A, binsize::Integer) where {T<:Number, S<:Number, A<:AbstractVector{S}}
+    function MaxMin{T,S,A}(input::A, binsize::Integer) where
+        {T<:Number, S<:Number, A<:AbstractVector{S}}
         return new(input, convert(Int, binsize))
     end
-    function MaxMin{T, S, A}(input::A, binsize::Integer) where {T<:Number, S<:Number, A<:AbstractArray{S, 2}}
+    function MaxMin{T,S,A}(input::A, binsize::Integer) where
+        {T<:Number, S<:Number, A<:AbstractArray{S, 2}}
         @assert size(input, 1) == 2 "assumes max and min are on first dimension"
         return new(input, convert(Int, binsize))
     end
-    function MaxMin{T, S, A}(input::A, binsize::Integer) where {T<:Number, S<:NTuple{2, T}, A<:AbstractVector{S}}
+    function MaxMin{T,S,A}(input::A, binsize::Integer) where
+        {T<:Number, S<:NTuple{2, T}, A<:AbstractVector{S}}
         return new(input, convert(Int, binsize))
     end
 end
-MaxMin(a::A, n::Integer) where {T<:Number, A<:AbstractVector{T}} = MaxMin{T, T, A}(a, n)
-MaxMin(a::A, n::Integer) where {T<:Number, S<:NTuple{2, T}, A<:AbstractVector{S}} = MaxMin{T, S, A}(a, n)
-MaxMin(a::A, n::Integer) where {T<:Number, A<:AbstractArray{T, 2}} = MaxMin{T, T, A}(a, n)
+function MaxMin(a::A, n::Integer) where {T<:Number, A<:AbstractVector{T}}
+    MaxMin{T, T, A}(a, n)
+end
+function MaxMin(a::A, n::Integer) where
+    {T<:Number, S<:NTuple{2, T}, A<:AbstractVector{S}}
+    MaxMin{T, S, A}(a, n)
+end
+function MaxMin(a::A, n::Integer) where
+    {T<:Number, A<:AbstractArray{T, 2}}
+    MaxMin{T, T, A}(a, n)
+end
 
-length(a::M) where {T, S, A<:AbstractVector, M<:MaxMin{T, S, A}} = cld(length(a.input), a.binsize)
-length(a::M) where {T, S, A<:AbstractArray{T, 2}, M<:MaxMin{T, S, A}} = cld(size(a.input, 2), a.binsize)
+function length(a::M) where {T, S, A<:AbstractVector, M<:MaxMin{T, S, A}}
+    cld(length(a.input), a.binsize)
+end
+function length(a::M) where {T, S, A<:AbstractArray{T, 2}, M<:MaxMin{T, S, A}}
+    cld(size(a.input, 2), a.binsize)
+end
 
 size(a::MaxMin) = (length(a),)
 binsize(a::MaxMin) = a.binsize
 
-function getindex(a::M, i::Integer) where {T<: Number, A<:AbstractVector, M<:MaxMin{T, T, A}}
+function getindex(a::M, i::Integer) where
+    {T<: Number, A<:AbstractVector, M<:MaxMin{T, T, A}}
     @boundscheck @assert checkbounds(Bool, a, i) "Index out of bounds"
     (idx_start, idx_stop) = bin_bounds(i, a.binsize, length(a.input))
     idx_range = idx_start:idx_stop
     return extrema(view(a.input, idx_range))
 end
-function getindex(a::M, i::Integer) where {T<: Number, S<:NTuple{2, T}, A<:AbstractVector, M<:MaxMin{T, S, A}}
+function getindex(a::M, i::Integer) where
+    {T<: Number, S<:NTuple{2, T}, A<:AbstractVector, M<:MaxMin{T, S, A}}
     @boundscheck @assert checkbounds(Bool, a, i) "Index out of bounds"
     (idx_start, idx_stop) = bin_bounds(i, a.binsize, length(a.input))
     cmin = a.input[idx_start][1]
@@ -41,7 +58,8 @@ function getindex(a::M, i::Integer) where {T<: Number, S<:NTuple{2, T}, A<:Abstr
     end
     return (cmin, cmax)
 end
-function getindex(a::M, i::Integer) where {T<: Number, A<:AbstractArray{T, 2}, M<:MaxMin{T, T, A}}
+function getindex(a::M, i::Integer) where
+    {T<: Number, A<:AbstractArray{T, 2}, M<:MaxMin{T, T, A}}
     @boundscheck @assert checkbounds(Bool, a, i) "Index out of bounds"
     (idx_start, idx_stop) = bin_bounds(i, a.binsize, size(a.input, 2))
     idx_range = idx_start:idx_stop
@@ -62,7 +80,9 @@ bin_bounds(i::Integer, a::MaxMin) = bin_bounds(i, a.binsize, length(a.input))
 "Must implement downsamp_req and duration"
 abstract type DynamicDownsampler end
 
-function downsamp_req(ds::DynamicDownsampler, x_start, x_end, reqpoints::AbstractFloat)
+function downsamp_req(
+    ds::DynamicDownsampler, x_start, x_end, reqpoints::AbstractFloat
+)
     return downsamp_req(ds, x_start, x_end, floor(Int, reqpoints))
 end
 
@@ -198,7 +218,8 @@ struct MappedDynamicDownsampler{D<:DynamicDownsampler} <: DynamicDownsampler
     fmap::Function
 end
 
-function downsamp_req(mdds::D, xb, xe, npts::Integer) where {D<:MappedDynamicDownsampler}
+function downsamp_req(mdds::D, xb, xe, npts::Integer) where
+    {D<:MappedDynamicDownsampler}
     (xs, ys, was_downsampled) = downsamp_req(mdds.downsampler, xb, xe, npts)
     mys = mdds.fmap(ys)
     return (xs, mys, was_downsampled)
@@ -206,8 +227,11 @@ end
 
 duration(d::MappedDynamicDownsampler) = duration(d.downsampler)
 
-shift_extrema(shift, ys::T) where {S, T<:NTuple{2,S}} = (ys[1] + shift, ys[2] + shift)
-function shift_extrema(shift, ys::A) where {T, S<:NTuple{2,T}, A<:AbstractVector{S}}
+function shift_extrema(shift, ys::T) where {S, T<:NTuple{2,S}}
+    (ys[1] + shift, ys[2] + shift)
+end
+function shift_extrema(shift, ys::A) where
+    {T, S<:NTuple{2,T}, A<:AbstractVector{S}}
     shifted = similar(ys)
     shift_extrema!(shift, shifted, ys)
     return shifted
