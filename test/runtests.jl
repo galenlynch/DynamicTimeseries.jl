@@ -17,20 +17,21 @@ using Base.Test
         @test mm[end] == (1, 2)
 
         dts = DynamicTs(A, 10, 0)
-        (xs, mm) = downsamp_req(dts, 0, 1, 10)
-        (xs, mm) = downsamp_req(dts, 1000, 1001, 10) # Past signal
+        (xs, mm, was_downsamped) = downsamp_req(dts, 0, 1, 10)
+        (xs, mm, was_downsamped) = downsamp_req(dts, 1000, 1001, 10) # Past signal
 
         const maxpt = 10
         cdt = CachingDynamicTs(A, fs, 0, maxpt)
-        (xs, mm) = downsamp_req(cdt, 0, 1, 100)
+        (xs, mm, was_downsamped) = downsamp_req(cdt, 0, 1, 100)
         @test length(mm) == 11
-        (xs, mm) = downsamp_req(cdt, 0, 100, 100)
+        (xs, mm, was_downsamped) = downsamp_req(cdt, 0, 100, 100)
         @test length(mm) == 100
-        (xs, mm) = downsamp_req(cdt, 0, 10, 50)
+        (xs, mm, was_downsamped) = downsamp_req(cdt, 0, 10, 50)
         @test length(mm) == 34
-        (xs, mm) = downsamp_req(cdt, 0, 100, 10)
+        (xs, mm, was_downsamped) = downsamp_req(cdt, 0, 100, 10)
         @test length(mm) == 10
         cdt = CachingDynamicTs(A, fs, 0, maxpt, false)
+        (path, npair) = write_cache_file(A)
         (files, lengths) = write_cache_files(A, 10)
         println(files)
         println(lengths)

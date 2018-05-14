@@ -10,7 +10,7 @@ function write_cache_file(
     mm = MaxMin(input, 10)
     npair = length(mm)
     path = basename * "_$npair"
-    io = open(path, "w")
+    io = open(path, "w+")
     try
         for extremum in mm
             write(io, extremum...)
