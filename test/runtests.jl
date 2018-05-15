@@ -3,18 +3,33 @@ using Base.Test
 
 @testset "GLTimeseries"  begin
     const npt = 1000
-    const A = ones(npt)
+    const A = ones(Int, npt)
+    const B = rand(npt)
     A[1:2:end] = 2
 
     const fs = 10
 
     @testset "timeseries" begin
-        mm = MaxMin(A, 10)
-        @test length(mm) == 100
-        @test size(mm) == (100,)
-        @test GLTimeseries.binsize(mm) == 10
-        @test mm[1] == (1, 2)
-        @test mm[end] == (1, 2)
+        @testset "maxmin" begin
+            mm = MaxMin(A, 10)
+            @test length(mm) == 100
+            @test size(mm) == (100,)
+            @test GLTimeseries.binsize(mm) == 10
+            @test mm[1] == (1, 2)
+            @test mm[end] == (1, 2)
+            mm2 = MaxMin(B, 10)
+            @test mm2[1] == extrema(B[1:10])
+            arr2d = Array{Float64, 2}(2, length(mm2))
+            for (i, (emin, emax)) in enumerate(mm2)
+                arr2d[1, i] = emin
+                arr2d[2, i] = emax
+            end
+            mm2d = MaxMin(arr2d, 10)
+            real_e = (minimum(view(arr2d, 1, 1:10)), maximum(view(arr2d, 2, 1:10)))
+            @test mm2d[1] == real_e
+            mm_tup = MaxMin(mm2, 10)
+            @test mm_tup[1] == real_e
+        end
 
         dts = DynamicTs(A, 10, 0)
         (xs, mm, was_downsamped) = downsamp_req(dts, 0, 1, 10)

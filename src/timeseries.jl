@@ -39,35 +39,31 @@ end
 size(a::MaxMin) = (length(a),)
 binsize(a::MaxMin) = a.binsize
 
-function getindex(a::M, i::Integer) where
-    {T<: Number, A<:AbstractVector, M<:MaxMin{T, T, A}}
-    @boundscheck @assert checkbounds(Bool, a, i) "Index out of bounds"
-    (idx_start, idx_stop) = bin_bounds(i, a.binsize, length(a.input))
-    idx_range = idx_start:idx_stop
-    return extrema(view(a.input, idx_range))
-end
-function getindex(a::M, i::Integer) where
-    {T<: Number, S<:NTuple{2, T}, A<:AbstractVector, M<:MaxMin{T, S, A}}
-    @boundscheck @assert checkbounds(Bool, a, i) "Index out of bounds"
-    (idx_start, idx_stop) = bin_bounds(i, a.binsize, length(a.input))
-    cmin = a.input[idx_start][1]
-    cmax = a.input[idx_start][2]
-    for i = (idx_start + 1):idx_stop
-        cmin = min(cmin, a.input[i][1])
-        cmax = max(cmax, a.input[i][2])
+extrema_red(a::AbstractVector{<:Number}) = extrema(a)
+extrema_red(a::AbstractArray{<:Number, 2}) = (minimum(view(a, 1, :)), maximum(view(a, 2, :)))
+function extrema_red(a::A) where {T<:NTuple{2, Number}, A<:AbstractVector{T}}
+    na = length(a)
+    na > 0 || throw(ArgumentError("Collection must not be empty"))
+    cmin = a[1][1]
+    cmax = a[1][2]
+    for i in 2:na
+        cmin = min(cmin, a[i][1])
+        cmax = max(cmax, a[i][2])
     end
     return (cmin, cmax)
+end
+
+
+function getindex(a::MaxMin, i::Integer)
+    @boundscheck @assert checkbounds(Bool, a, i) "Index out of bounds"
+    (idx_start, idx_stop) = bin_bounds(i, a.binsize, length(a.input))
+    return extrema_red(view(a.input, idx_start:idx_stop))
 end
 function getindex(a::M, i::Integer) where
     {T<: Number, A<:AbstractArray{T, 2}, M<:MaxMin{T, T, A}}
     @boundscheck @assert checkbounds(Bool, a, i) "Index out of bounds"
     (idx_start, idx_stop) = bin_bounds(i, a.binsize, size(a.input, 2))
-    idx_range = idx_start:idx_stop
-    extremum = (
-        minimum(view(a.input, 1, idx_range)),
-        maximum(view(a.input, 2, idx_range))
-    )
-    return extremum
+    return extrema_red(view(a.input, :, idx_start:idx_stop))
 end
 
 Base.IndexStyle(::Type{T}) where T<: MaxMin = IndexLinear()
@@ -163,7 +159,7 @@ function CachingDynamicTs(
     input::A,
     fs::Real,
     offset::Real = 0,
-    sizehint::Integer = 300, # x dimension in pixels of a small window?
+    sizehint::Integer = 70, # x dimension in pixels of a small window?
     autoclean::Bool = true
 ) where {S<:Number, A<:AbstractVector{S}}
     (cachepaths, cachelengths) = write_cache_files(input, sizehint, autoclean)
