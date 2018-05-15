@@ -82,15 +82,15 @@ function downsamp_req(
     return downsamp_req(ds, x_start, x_end, floor(Int, reqpoints))
 end
 
-struct DynamicTs{A<:AbstractVector} <: DynamicDownsampler
+struct DynamicTs{S<:Number, A<:AbstractVector{S}} <: DynamicDownsampler
     input::A
     fs::Float64
     offset::Float64
-    function DynamicTs{A}(
+    function DynamicTs{S, A}(
         input::A,
         fs::Float64,
         offset::Float64
-    ) where {A<:AbstractArray}
+    ) where {S<:Number, A<:AbstractVector{S}}
         return new(input, fs, offset)
     end
 end
@@ -98,32 +98,44 @@ function DynamicTs(
     input::A,
     fs::Real,
     offset::Real = 0
-) where {A <: AbstractVector}
-    return DynamicTs{A}(input, convert(Float64, fs), convert(Float64, offset))
+) where {S<:Number, A <: AbstractVector{S}}
+    return DynamicTs{S,A}(input, convert(Float64, fs), convert(Float64, offset))
 end
 
-function downsamp_req(dts::DynamicTs, x_start, x_end, reqpoints::Integer)
+function downsamp_range_check(dts::DynamicDownsampler, x_start, x_end)
+    x_start <= x_end || throw(ArgumentError("x_start must be before x_end"))
     nin = length(dts.input)
-
     # Find bounding indices
-    i_begin = clip_ndx(t_to_ndx(x_start, dts.fs, dts.offset), nin)
-    i_end = clip_ndx(t_to_ndx(x_end, dts.fs, dts.offset), nin)
+    i_begin = t_to_ndx(x_start, dts.fs, dts.offset)
+    i_end = t_to_ndx(x_end, dts.fs, dts.offset)
+    in_range = i_begin <= nin && i_end >= 1
+    i_begin_clipped = clip_ndx(i_begin, nin)
+    i_end_clipped = clip_ndx(i_end, nin)
+    return (in_range, i_begin_clipped, i_end_clipped)
+end
 
+function downsamp_req(
+    dts::DynamicTs{S,A}, x_start, x_end, reqpoints::Integer
+) where {S, A}
+    (in_range, i_begin, i_end) = downsamp_range_check(dts, x_start, x_end)
+    if ! in_range
+        return (Vector{Float64}(), Vector{NTuple{2,S}}(), false)
+    end
     # Calculate binsize
     npt = n_ndx(i_begin, i_end)
-    binsize = cld(npt, reqpoints)
+    binsize = max(fld(npt, reqpoints), 1)
 
-    was_downsampled = reqpoints > npt
+    was_downsampled = binsize > 1
 
     # Clip data
     subview = view(dts.input, i_begin:i_end)
 
     # Create downsampled data
-    ys = MaxMin(subview, binsize)
+    mm = MaxMin(subview, binsize)
     bin_start_x = ndx_to_t(i_begin, dts.fs, dts.offset)
-    xs = ndx_to_t(bin_center(bin_bounds(ys)), dts.fs, bin_start_x)
-
-    return (xs, ys, was_downsampled)
+    xs = ndx_to_t(bin_center(bin_bounds(mm)), dts.fs, bin_start_x)
+    ys = collect(mm)
+    return (xs::Vector{Float64}, ys::Vector{NTuple{2,S}}, was_downsampled)
 end
 
 duration(d::DynamicTs) = duration(length(d.input), d.fs, d.offset)
@@ -167,39 +179,103 @@ function CachingDynamicTs(
     CachingDynamicTs(input, fs, offset, cachearrs)
 end
 
-function downsamp_req(dts::CachingDynamicTs, x_start, x_end, reqpts::Integer)
-    nin = length(dts.input)
-    i_begin = clip_ndx(t_to_ndx(x_start, dts.fs, dts.offset), nin)
-    i_end = clip_ndx(t_to_ndx(x_end, dts.fs, dts.offset), nin)
+dec_ndx_greater(i, dec) = cld(i - 1, 10 ^ dec) + 1
+dec_ndx_lesser(i, dec) = fld(i, 10 ^ dec)
+dec_ndx_2_base_start(i, dec) = (i - 1) * 10 ^ dec + 1
+dec_ndx_2_base_end(i, dec) = i * 10 ^ dec
+
+"Recursively find extrema using cached arrays"
+function extrema_range(dts::CachingDynamicTs{S, A}, i_start::Integer, i_stop::Integer) where {S, A}
+    nbase = n_ndx(i_start, i_stop)
+    decno = min(floor(Int, log10(nbase)), length(dts.cachearrays))
+    if decno > 0
+        cached_extrema = Vector{NTuple{2, S}}(3) # Store
+        n_input = length(dts.input)
+
+        # Find which cached indexes are completely contained in this slice
+        contained_first = dec_ndx_greater(i_start, decno)
+        if n_input == i_stop
+            contained_last = size(dts.cachearrays[decno], 2)
+        else
+            contained_last = dec_ndx_lesser(i_stop, decno)
+        end
+
+        # Reduce contained cache values
+        contained_view = view(dts.cachearrays[decno], :, contained_first:contained_last)
+        if size(contained_view, 2) > 0
+            extrema_i = 2
+            cached_extrema[1] = extrema_red(contained_view)
+            remainder_left_stop = dec_ndx_2_base_start(contained_first, decno) - 1
+            remainder_right_start = dec_ndx_2_base_end(contained_last, decno) + 1
+        else
+            extrema_i = 1
+            pop!(cached_extrema)
+            # Split indicies in a cache-friendly manner
+            next_dec = decno - 1
+            remainder_left_stop = (10 ^ next_dec) * decade_ndx_conversion(
+                i_start + fld(nbase, 2), next_dec) # Should be at the end of a cache
+            remainder_right_start = remainder_left_stop + 1
+        end
+
+        # Recurse on 'left' remainder
+        if i_start <= remainder_left_stop
+            cached_extrema[extrema_i] = extrema_range(dts, i_start, remainder_left_stop)
+            extrema_i += 1
+        else
+            pop!(cached_extrema)
+        end
+
+        # Recurse on 'right' remainder
+        if i_stop >= remainder_right_start
+            cached_extrema[extrema_i] = extrema_range(dts, remainder_right_start, i_stop)
+            extrema_i += 1
+        else
+            pop!(cached_extrema)
+        end
+
+        out = extrema_red(cached_extrema)
+    else # We're at the base level
+        out = extrema_red(view(dts.input, i_start:i_stop))
+    end
+    return out
+end
+
+subselect_index(ndx, ndx_base) = ndx_base + ndx - 1
+subselect_bin_bounds(bbounds::NTuple{2, <:Integer}, ndx_base::Integer) = subselect_index.(bbounds, ndx_base)
+
+function downsamp_req(
+    dts::CachingDynamicTs{S, A}, x_start, x_end, reqpts::Integer
+) where {S, A}
+    (in_range, i_begin, i_end) = downsamp_range_check(dts, x_start, x_end)
+    if ! in_range
+        return (Vector{Float64}(), Vector{NTuple{2,S}}(), false)
+    end
     nbase = n_ndx(i_begin, i_end)
+    binsize = max(fld(nbase, reqpts), 1)
     ncache = length(dts.cachearrays)
-    decno = min(floor(Int, log10(nbase / reqpts)), ncache)
-    if decno >= 1
+    decno = min(floor(Int, log10(binsize)), ncache)
+    if  decno > 0
         was_downsampled = true
-        di_begin = decade_ndx_conversion(i_begin, decno)
-        di_end = decade_ndx_conversion(i_end, decno)
-        subview = view(dts.cachearrays[decno], 1:2, di_begin:di_end)
-
-        nsubsamp = n_ndx(di_begin, di_end)
-        binsize = cld(nsubsamp, reqpts)
-        ys = MaxMin(subview, binsize)
-
-        dec_idxes = bin_center(bin_bounds(ys)) + di_begin - 1
-        base_idxes = dec_ndx_to_ndx(dec_idxes, decno)
-        xs = ndx_to_t(base_idxes, dts.fs, dts.offset)
+        nbin = cld(nbase, binsize)
+        ys = Vector{NTuple{2, S}}(nbin)
+        for binno in 1:nbin
+            (bin_start, bin_stop) = subselect_bin_bounds(bin_bounds(binno, binsize, nbase), i_begin)
+            ys[binno] = extrema_range(dts, bin_start, bin_stop)
+        end
+        bbounds = bin_bounds.(1:nbin, binsize, nbase)
     else
-        binsize = ceil(Int, nbase / reqpts)
         was_downsampled = binsize > 1
         i_range = i_begin:i_end
 
         # Clip data
         subview = view(dts.input, i_range)
-        ys = MaxMin(subview, binsize)
-
-        bin_start_x = ndx_to_t(i_begin, dts.fs, dts.offset)
-        xs = ndx_to_t(bin_center(bin_bounds(ys)), dts.fs, bin_start_x)
+        mm = MaxMin(subview, binsize)
+        ys = collect(mm)
+        bbounds = bin_bounds(mm)
     end
-    return (xs, ys, was_downsampled)
+    actual_start_x = ndx_to_t(i_begin, dts.fs, dts.offset)
+    xs = ndx_to_t(bin_center(bbounds), dts.fs, actual_start_x)
+    return (xs::Vector{Float64}, ys::Vector{NTuple{2,S}}, was_downsampled)
 end
 
 duration(dts::CachingDynamicTs) = duration(length(dts.input), dts.fs, dts.offset)
