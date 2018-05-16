@@ -20,7 +20,7 @@ function DynamicSpectrogram(
     input::A,
     fs::Real,
     offset::Real = 0,
-    window::Vector{Float64} = hanning(1024),
+    window::Vector{Float64} = hanning(512),
     overlap::Float64 = 0.8
 ) where {A<:AbstractVector}
     return DynamicSpectrogram{A}(
@@ -39,7 +39,9 @@ function extrema(d::DynamicSpectrogram)
     return (freqs[1], freqs[end])
 end
 
-function downsamp_req(ds::DynamicSpectrogram, xb, xe, npt::Integer; windowfun::Function = hanning)
+function downsamp_req(
+    ds::DynamicSpectrogram, xb, xe, npt::Integer; windowfun::Function = hanning
+)
     # test
     nin = length(ds.input)
     (ib, ie) = clip_ndx.(t_to_ndx.([xb, xe], ds.fs, ds.offset), nin)
