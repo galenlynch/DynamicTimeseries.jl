@@ -1,7 +1,7 @@
 __precompile__()
 module GLTimeseries
 
-import Base: linearindexing, length, size, getindex, setindex!
+import Base: linearindexing, length, size, getindex, setindex!, extrema
 import GLUtilities: bin_bounds, duration
 
 using

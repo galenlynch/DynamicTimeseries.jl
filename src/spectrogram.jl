@@ -32,6 +32,13 @@ function DynamicSpectrogram(
     )
 end
 
+duration(d::DynamicSpectrogram) = duration(length(d.input), d.fs, d.offset)
+
+function extrema(d::DynamicSpectrogram)
+    freqs = rfftfreq(length(d.window), d.fs)
+    return (freqs[1], freqs[end])
+end
+
 function downsamp_req(ds::DynamicSpectrogram, xb, xe, npt::Integer; windowfun::Function = hanning)
     # test
     nin = length(ds.input)

@@ -76,8 +76,8 @@ end
 
 function open_cache_files(
     ::Type{T},
-    lengths::A,
     paths::Vector{String},
+    lengths::A,
     autoclean::Bool = true
 ) where {T, S<:Integer, A<:AbstractArray{S}}
     ndecade = length(paths)
@@ -92,6 +92,11 @@ function open_cache_files(
         retrhow()
     end
     return cachearr
+end
+
+function open_cache_files(::Type{T}, cachedir::AbstractString, fid::Integer) where T
+    (fpaths, lengths) = parse_cache_filenames(cachedir, fid)
+    return open_cache_files(T, fpaths, lengths, false)
 end
 
 function parse_cache_filenames(cachedir::AbstractString, fid::Integer)
@@ -115,9 +120,4 @@ function parse_cache_filenames(cachedir::AbstractString, fid::Integer)
     end
 
     return (fpaths, lengths)
-end
-
-function open_cache_files(::Type{T}, cachedir::AbstractString, fid::Integer) where T
-    (fpaths, lengths) = parse_cache_filenames(cachedir, fid)
-    return open_cache_files(T, lengths, fpaths, false)
 end

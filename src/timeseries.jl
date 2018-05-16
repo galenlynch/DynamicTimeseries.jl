@@ -40,7 +40,18 @@ size(a::MaxMin) = (length(a),)
 binsize(a::MaxMin) = a.binsize
 
 extrema_red(a::AbstractVector{<:Number}) = extrema(a)
-extrema_red(a::AbstractArray{<:Number, 2}) = (minimum(view(a, 1, :)), maximum(view(a, 2, :)))
+function extrema_red(a::AbstractArray{<:Number, 2})
+    na = size(a, 2)
+    na > 0 || throw(ArgumentError("Collection must not be empty"))
+    cmin = a[1, 1]
+    cmax = a[2, 1]
+    for i in 2:na
+        cmin = min(cmin, a[1, i])
+        cmax = max(cmax, a[2, i])
+    end
+    return (cmin, cmax)
+end
+
 function extrema_red(a::A) where {T<:NTuple{2, Number}, A<:AbstractVector{T}}
     na = length(a)
     na > 0 || throw(ArgumentError("Collection must not be empty"))
@@ -55,13 +66,11 @@ end
 
 
 function getindex(a::MaxMin, i::Integer)
-    @boundscheck @assert checkbounds(Bool, a, i) "Index out of bounds"
     (idx_start, idx_stop) = bin_bounds(i, a.binsize, length(a.input))
     return extrema_red(view(a.input, idx_start:idx_stop))
 end
 function getindex(a::M, i::Integer) where
     {T<: Number, A<:AbstractArray{T, 2}, M<:MaxMin{T, T, A}}
-    @boundscheck @assert checkbounds(Bool, a, i) "Index out of bounds"
     (idx_start, idx_stop) = bin_bounds(i, a.binsize, size(a.input, 2))
     return extrema_red(view(a.input, :, idx_start:idx_stop))
 end
@@ -73,8 +82,13 @@ setindex!(::MaxMin, ::Integer) = throw(ReadOnlyMemoryError())
 bin_bounds(a::MaxMin) = bin_bounds.(eachindex(a), a.binsize, length(a.input))
 bin_bounds(i::Integer, a::MaxMin) = bin_bounds(i, a.binsize, length(a.input))
 
-"Must implement downsamp_req and duration"
+"Must implement downsamp_req and duration and extrema"
 abstract type DynamicDownsampler end
+
+function extrema(d::DynamicDownsampler)
+    (_, ys, _) = downsamp_req(d, duration(d)..., 1)
+    extrema_red(ys)
+end
 
 function downsamp_req(
     ds::DynamicDownsampler, x_start, x_end, reqpoints::AbstractFloat
@@ -145,13 +159,18 @@ struct CachingDynamicTs{S<:Number, A<:AbstractVector{S}} <: DynamicDownsampler
     fs::Float64
     offset::Float64
     cachearrays::Vector{Array{S, 2}}
+    cachepaths::Vector{String}
     function CachingDynamicTs{S,A}(
         input::A,
         fs::Float64,
         offset::Float64,
         cachearrays::Vector{Array{S, 2}},
+        cachepaths::Vector{String}
     ) where {S<:Number, A<:AbstractVector{S}}
-        return new(input, fs, offset, cachearrays)
+        if length(cachepaths) != length(cachearrays)
+            throw(ArgumentError("cachearrays must be same length as cachepaths"))
+        end
+        return new(input, fs, offset, cachearrays, cachepaths)
     end
 end
 function CachingDynamicTs(
@@ -159,12 +178,14 @@ function CachingDynamicTs(
     fs::Real,
     offset::Real,
     cachearrs::Vector{Array{S, 2}},
+    cachepaths::Vector{String}
 ) where {S<:Number, A<:AbstractVector{S}}
     return CachingDynamicTs{S,A}(
         input,
         convert(Float64, fs),
         convert(Float64, offset),
-        cachearrs
+        cachearrs,
+        cachepaths
     )
 end
 function CachingDynamicTs(
@@ -175,8 +196,8 @@ function CachingDynamicTs(
     autoclean::Bool = true
 ) where {S<:Number, A<:AbstractVector{S}}
     (cachepaths, cachelengths) = write_cache_files(input, sizehint, autoclean)
-    cachearrs = open_cache_files(S, cachelengths, cachepaths, false)
-    CachingDynamicTs(input, fs, offset, cachearrs)
+    cachearrs = open_cache_files(S, cachepaths, cachelengths, false)
+    CachingDynamicTs(input, fs, offset, cachearrs, cachepaths)
 end
 
 dec_ndx_greater(i, dec) = cld(i - 1, 10 ^ dec) + 1
@@ -318,5 +339,9 @@ function shift_extrema!(
         dest[i] = shift_extrema(shift, ys[i])
     end
 end
+function shift_extrema!(shift, ys)
+    shift_extrema!(shift, ys, ys)
+    return ys
+end
 
-make_shifter(shift) = (x) -> shift_extrema(shift, x)
+make_shifter(shift) = (x) -> shift_extrema!(shift, x)
