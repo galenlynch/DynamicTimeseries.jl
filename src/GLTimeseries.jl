@@ -12,27 +12,28 @@ export
     # Constants
     GL_CACHEPREFIX,
     # Types
-    MaxMin,
-    DynamicTs,
+    CachingDynamicTs,
+    Downsampler,
     DynamicDownsampler,
     DynamicSpectrogram,
-    CachingDynamicTs,
+    DynamicTs,
     MappedDynamicDownsampler,
-    Downsampler,
+    MaxMin,
 
     # Functions
-    extent,
+    cacheinfo,
+    cache_reg,
     duration,
     downsamp_req,
-    write_cache_files,
-    write_cache_file,
+    extent,
+    make_shifter,
     open_cache_files,
     open_cache_file,
+    parse_cache_filenames,
     shift_extrema,
     shift_extrema!,
-    make_shifter,
-    cache_reg,
-    parse_cache_filenames
+    write_cache_files,
+    write_cache_file
 
 include("util.jl")
 include("timeseries.jl")

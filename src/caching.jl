@@ -94,6 +94,11 @@ function open_cache_files(
     return cachearr
 end
 
+function cacheinfo(a::C) where {S<:Number, A, C<:CachingDynamicTs{S, A}}
+    cachelengths = map((x) -> size(x, 2), a.cachearrays)
+    return (S, a.cachepaths, cachellengths)
+end
+
 function open_cache_files(::Type{T}, cachedir::AbstractString, fid::Integer) where T
     (fpaths, lengths) = parse_cache_filenames(cachedir, fid)
     return open_cache_files(T, fpaths, lengths, false)

@@ -147,6 +147,7 @@ struct CachingDynamicTs{S<:Number, A<:AbstractVector{S}} <: DynamicDownsampler
         return new(input, fs, offset, cachearrays, cachepaths)
     end
 end
+
 function CachingDynamicTs(
     input::A,
     fs::Real,
@@ -162,16 +163,28 @@ function CachingDynamicTs(
         cachepaths
     )
 end
+
 function CachingDynamicTs(
     input::A,
+    fs::Real,
+    offset::Real,
+    cachepaths::AbstractArray{<:AbstractString},
+    cachelengths::AbstractArray{<:Integer},
+    autoclean::Bool = false
+) where {S<:Number, A<:AbstractVector{S}}
+    cachearrs = open_cache_files(S, cachepaths, cachelengths, autoclean)
+    CachingDynamicTs(input, fs, offset, cachearrs, cachepaths)
+end
+
+function CachingDynamicTs(
+    input::AbstractVector{<:Number},
     fs::Real,
     offset::Real = 0,
     sizehint::Integer = 70, # x dimension in pixels of a small window?
     autoclean::Bool = true
-) where {S<:Number, A<:AbstractVector{S}}
+)
     (cachepaths, cachelengths) = write_cache_files(input, sizehint, autoclean)
-    cachearrs = open_cache_files(S, cachepaths, cachelengths, false)
-    CachingDynamicTs(input, fs, offset, cachearrs, cachepaths)
+    CachingDynamicTs(input, fs, offset, cachepaths, cachelengths, false)
 end
 
 dec_ndx_greater(i, dec) = cld(i - 1, 10 ^ dec) + 1
