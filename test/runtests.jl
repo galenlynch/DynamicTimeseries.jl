@@ -47,7 +47,9 @@ using Base.Test
                 println(files)
                 println(lengths)
                 cachedir = tempdir()
-                (files, lengths) = write_cache_files(cachedir, 1, true, A, 10)
+                (files, lengths) = write_cache_files(
+                    A, 10, true;
+                    cachedir=cachedir, fid=1)
                 println(files)
                 println(lengths)
                 cachearr = open_cache_files(Int, cachedir, 1)

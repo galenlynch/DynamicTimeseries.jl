@@ -1,6 +1,8 @@
 const GL_CACHEPREFIX = "GLTSCACHE"
 
-cache_reg(fid::Integer) = Regex("^$(GL_CACHEPREFIX)_$(fid)_(\\d+)_(\\d+)\$")
+cache_reg(fid::Integer, ::Type{T}) where {T<:Number} = Regex(
+    string("^", GL_CACHEPREFIX, '_', fid, '_', T, "_(\\d+)_(\\d+)\$")
+)
 
 function write_cache_file(
     input::AbstractArray,
@@ -41,10 +43,10 @@ function write_cache_files(
                 "is not a directory"
             )
         )
-        basestr = string(GL_CACHEPREFIX, '_', fid)
+        basestr = string(GL_CACHEPREFIX, '_', fid, '_', T)
         basename = joinpath(cachedir, basestr)
     else
-        basename = tempname()
+        basename = tempname() * "_$T"
     end
     if sizehint < nsamp
         # Preallocate
@@ -60,7 +62,8 @@ function write_cache_files(
         for dno = 2:ndecade
             dname = basename * "_$dno"
             try
-                (cachepaths[dno], lengths[dno]) = write_cache_file(cachearr, autoclean, dname)
+                (cachepaths[dno], lengths[dno]) = write_cache_file(
+                    cachearr, autoclean, dname)
                 cachearr = open_cache_file(T, lengths[dno], cachepaths[dno])
             catch
                 for i = 1:(dno - 1)
@@ -108,13 +111,17 @@ function cacheinfo(a::C) where {S<:Number, A, C<:CachingDynamicTs{S, A}}
     return (S, a.cachepaths, cachellengths)
 end
 
-function open_cache_files(::Type{T}, cachedir::AbstractString, fid::Integer) where T
-    (fpaths, lengths) = parse_cache_filenames(cachedir, fid)
+function open_cache_files(
+    ::Type{T}, cachedir::AbstractString, fid::Integer
+) where T
+    (fpaths, lengths) = parse_cache_filenames(cachedir, fid, T)
     return open_cache_files(T, fpaths, lengths, false)
 end
 
-function parse_cache_filenames(cachedir::AbstractString, fid::Integer)
-    matches = dir_match_files(cache_reg(fid), cachedir)
+function parse_cache_filenames(
+    cachedir::AbstractString, fid::Integer, ::Type{T}
+) where {T<:Number}
+    matches = dir_match_files(cache_reg(fid, T), cachedir)
     nm = length(matches)
 
     lengths = Vector{Int}(nm)
@@ -132,6 +139,5 @@ function parse_cache_filenames(cachedir::AbstractString, fid::Integer)
         fpaths = fpaths[filenos]
         lengths = lengths[filenos]
     end
-
     return (fpaths, lengths)
 end

@@ -170,8 +170,19 @@ function CachingDynamicTs(
     offset::Real,
     cachepaths::AbstractArray{<:AbstractString},
     cachelengths::AbstractArray{<:Integer},
-    autoclean::Bool = false
+    autoclean::Bool = false;
+    checkfiles::Bool = true
 ) where {S<:Number, A<:AbstractVector{S}}
+    if checkfiles
+        p = sortperm(cachelengths)
+        cachelengths = cachelengths[p]
+        cachepaths = cachepaths[p]
+        last_len = length(input)
+        for l in cachelengths
+            cld(last_len, l) == 10 || error("Caches are not decades")
+            last_len = l
+        end
+    end
     cachearrs = open_cache_files(S, cachepaths, cachelengths, autoclean)
     CachingDynamicTs(input, fs, offset, cachearrs, cachepaths)
 end
@@ -184,7 +195,9 @@ function CachingDynamicTs(
     autoclean::Bool = true
 )
     (cachepaths, cachelengths) = write_cache_files(input, sizehint, autoclean)
-    CachingDynamicTs(input, fs, offset, cachepaths, cachelengths, false)
+    CachingDynamicTs(
+        input, fs, offset, cachepaths, cachelengths, false; checkfiles=false
+    )
 end
 
 dec_ndx_greater(i, dec) = cld(i - 1, 10 ^ dec) + 1
