@@ -174,12 +174,16 @@ function CachingDynamicTs(
     checkfiles::Bool = true
 ) where {S<:Number, A<:AbstractVector{S}}
     if checkfiles
-        p = sortperm(cachelengths)
+        p = sortperm(cachelengths; rev=true)
         cachelengths = cachelengths[p]
         cachepaths = cachepaths[p]
         last_len = length(input)
         for l in cachelengths
-            cld(last_len, l) == 10 || error("Caches are not decades")
+            if cld(last_len, l) != 10
+                error(
+"last cache was $last_len, but this cache is $l which is not a factor of 10"
+                )
+            end
             last_len = l
         end
     end
