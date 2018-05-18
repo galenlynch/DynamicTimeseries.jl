@@ -28,10 +28,24 @@ end
 function write_cache_files(
     input::A,
     sizehint::Integer,
-    autoclean::Bool = true,
-    basename::AbstractString = tempname()
+    autoclean::Bool = true;
+    fid::Integer = -1,
+    cachedir::AbstractString = tempdir()
 )where {T<: Number, N, A<:AbstractArray{T, N}}
     nsamp = length(input)
+    if fid > 0
+        isdir(cachedir) || throw(
+            ArgumentError(
+                "cachedir ",
+                cachedir,
+                "is not a directory"
+            )
+        )
+        basestr = string(GL_CACHEPREFIX, '_', fid)
+        basename = joinpath(cachedir, basestr)
+    else
+        basename = tempname()
+    end
     if sizehint < nsamp
         # Preallocate
         ndecade = convert(Int, ceil(log10(nsamp / sizehint)))
@@ -60,11 +74,6 @@ function write_cache_files(
         lengths = Vector{Int}()
     end
     return (cachepaths, lengths)
-end
-function write_cache_files(cachedir::AbstractString, fid::Integer, autoclean::Bool = true, args...)
-    basestr = string(GL_CACHEPREFIX, '_', fid)
-    basename = joinpath(cachedir, basestr)
-    return write_cache_files(args..., autoclean, basename)
 end
 
 function open_cache_file(::Type{T}, npair::Integer, path::AbstractString) where T
