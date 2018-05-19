@@ -1,4 +1,4 @@
-struct DynamicSpectrogram{A<:AbstractVector} <: DynamicDownsampler
+struct DynamicSpectrogram{A<:AbstractVector} <: DynamicDownsampler{Tuple{Vector{Float64}, Array{Float64, 2}}}
     input::A
     fs::Float64
     offset::Float64

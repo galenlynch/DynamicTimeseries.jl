@@ -2,6 +2,7 @@ using GLTimeseries
 using Base.Test
 
 @testset "GLTimeseries"  begin
+
     const npt = 1000
     const A = ones(Int, npt)
     const B = rand(npt)

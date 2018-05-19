@@ -108,7 +108,7 @@ end
 
 function cacheinfo(a::C) where {S<:Number, A, C<:CachingDynamicTs{S, A}}
     cachelengths = map((x) -> size(x, 2), a.cachearrays)
-    return (S, a.cachepaths, cachellengths)
+    return (S, a.cachepaths, cachelengths)
 end
 
 function open_cache_files(

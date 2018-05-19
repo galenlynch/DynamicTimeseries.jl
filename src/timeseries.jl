@@ -57,7 +57,7 @@ bin_bounds(a::MaxMin) = bin_bounds.(eachindex(a), a.binsize, length(a.input))
 bin_bounds(i::Integer, a::MaxMin) = bin_bounds(i, a.binsize, length(a.input))
 
 "Must implement downsamp_req and duration and extrema"
-abstract type DynamicDownsampler end
+abstract type DynamicDownsampler{E} end
 
 function extrema(d::DynamicDownsampler)
     (_, ys, _) = downsamp_req(d, duration(d)..., 1)
@@ -70,7 +70,7 @@ function downsamp_req(
     return downsamp_req(ds, x_start, x_end, floor(Int, reqpoints))
 end
 
-struct DynamicTs{S<:Number, A<:AbstractVector{S}} <: DynamicDownsampler
+struct DynamicTs{S<:Number, A<:AbstractVector{S}} <: DynamicDownsampler{NTuple{2, S}}
     input::A
     fs::Float64
     offset::Float64
@@ -128,7 +128,7 @@ end
 
 duration(d::DynamicTs) = duration(length(d.input), d.fs, d.offset)
 
-struct CachingDynamicTs{S<:Number, A<:AbstractVector{S}} <: DynamicDownsampler
+struct CachingDynamicTs{S<:Number, A<:AbstractVector{S}} <: DynamicDownsampler{NTuple{2, S}}
     input::A
     fs::Float64
     offset::Float64
@@ -310,9 +310,12 @@ ndx_to_dec_ndx(args...) = decade_ndx_conversion(args...)
 dec_ndx_to_ndx(i::Real, dec::Integer) = bin_center(i, 10 ^ dec)
 dec_ndx_to_ndx(is::AbstractVector, dec::Integer) = bin_center.(is, 10 ^ dec)
 
-struct MappedDynamicDownsampler{D<:DynamicDownsampler} <: DynamicDownsampler
+struct MappedDynamicDownsampler{E, D<:DynamicDownsampler{E}} <: DynamicDownsampler{E}
     downsampler::D
     fmap::Function
+end
+function MappedDynamicDownsampler(d::D, fmap::Function) where {E, D<:DynamicDownsampler{E}}
+    return MappedDynamicDownsampler{E,D}(d, fmap)
 end
 
 function downsamp_req(mdds::D, xb, xe, npts::Integer) where
@@ -324,28 +327,28 @@ end
 
 duration(d::MappedDynamicDownsampler) = duration(d.downsampler)
 
+make_shifter(shift) = (x) -> shift_extrema!(shift, x)
+
 function shift_extrema(shift, ys::T) where {S, T<:NTuple{2,S}}
     (ys[1] + shift, ys[2] + shift)
 end
-function shift_extrema(shift, ys::A) where
-    {T, S<:NTuple{2,T}, A<:AbstractVector{S}}
-    shifted = similar(ys)
-    shift_extrema!(shift, shifted, ys)
-    return shifted
-end
+shift_extrema(shift, y::Number) = y + shift
 
-function shift_extrema!(
-    shift,
-    dest::B,
-    ys::A
-) where {T, S<:NTuple{2,T}, A<:AbstractVector{S}, B<:AbstractVector{S}}
+function shift_extrema!(shift, dest::B, ys::A) where
+    {S, A<:AbstractVector{S}, B<:AbstractVector{S}}
     for (i, tup) in enumerate(ys)
         dest[i] = shift_extrema(shift, ys[i])
     end
 end
+
 function shift_extrema!(shift, ys)
     shift_extrema!(shift, ys, ys)
     return ys
 end
 
-make_shifter(shift) = (x) -> shift_extrema!(shift, x)
+function shift_extrema(shift, ys::AbstractVector)
+    shifted = similar(ys)
+    shift_extrema!(shift, shifted, ys)
+    return shifted
+end
+
