@@ -88,5 +88,9 @@ function downsamp_req(
     )
     first_x = ndx_to_t(ib_ex, ds.fs, ds.offset)
     times = S.time + first_x
-    return (times, (collect(S.freq), S.power), was_downsamped)
+
+    t_width = length(times) > 1 ? times[2] - times[1] : win_l_final / ds.fs
+    f_width = length(S.freq) > 1 ? S.freq[2] - S.freq[1] : ds.fs / 2
+
+    return (times, (collect(S.freq), S.power, t_width, f_width), was_downsamped)
 end
