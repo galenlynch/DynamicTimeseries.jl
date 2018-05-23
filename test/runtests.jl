@@ -59,6 +59,8 @@ using Base.Test
             cdt = CachingDynamicTs(A, fs, 0, maxpt)
             (xs, mm, was_downsamped) = downsamp_req(cdt, 0, 1, 100)
             @test length(mm) == 11
+            println(duration(cdt))
+            (xs, mm, wd) = downsamp_req(cdt, 0, 100, 10, false)
             (xs, mm, was_downsamped) = downsamp_req(cdt, 0, 100, 100)
             @test length(mm) == 100
             (xs, mm, was_downsamped) = downsamp_req(cdt, 0, 10, 50)

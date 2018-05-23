@@ -40,7 +40,8 @@ function extrema(d::DynamicSpectrogram)
 end
 
 function downsamp_req(
-    ds::DynamicSpectrogram, xb, xe, npt::Integer; windowfun::Function = hanning
+    ds::DynamicSpectrogram, xb, xe, npt::Integer, args...;
+    windowfun::Function = hanning
 )
     # test
     nin = length(ds.input)

@@ -36,8 +36,12 @@ export
     write_cache_file
 
 include("util.jl")
-include("timeseries.jl")
-include("spectrogram.jl")
+include("maxmin.jl")
+include("dynamic_downsampler.jl")
+include("dynamic_ts.jl")
+include("mapped_ts.jl")
+include("caching_ts.jl")
 include("caching.jl")
+include("spectrogram.jl")
 
 end # module
