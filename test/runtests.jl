@@ -87,7 +87,7 @@ using Base.Test
 
     @testset "spectrogram" begin
         ds = DynamicSpectrogram(A, fs, 0)
-        (t, (f, s)) = downsamp_req(ds, 0, 100, 2)
+        (t, (f, s, t_w, f_w)) = downsamp_req(ds, 0, 100, 2)
     end
 
     @testset "util" begin

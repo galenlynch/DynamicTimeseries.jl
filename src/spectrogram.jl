@@ -46,14 +46,14 @@ function downsamp_req(
     # test
     nin = length(ds.input)
     (ib, ie) = clip_ndx.(t_to_ndx.([xb, xe], ds.fs, ds.offset), nin)
-    nsel = n_ndx(ib, ie)
     win_l = length(ds.window)
+    nsel = n_ndx(ib, ie)
     noverlap = floor(Int, ds.overlap * win_l)
-    win_nbase = div(nin - win_l, win_l - noverlap) + 1
+    win_nbase = div(nin + win_l - noverlap, win_l - noverlap)
     # Check if we have too many windows
     if win_nbase > npt
         # Too many windows: increase their size
-        win_l_target = cld(nsel, npt - floor(Int, ds.overlap * (npt - 1)))
+        win_l_target = cld(nsel, npt - floor(Int, ds.overlap * (npt - 1) - 1))
         was_downsamped = true
     else
         win_l_target = win_l
@@ -76,10 +76,17 @@ function downsamp_req(
         window = ds.window
     end
 
+    # Expand selected data for edge bins
+    half_w = div(win_l_final, 2)
+    ib_ex = max(1, ib - half_w)
+    ie_ex = min(nin, ie + half_w)
     # Select the portion of the signal in range
-    sel_sig = ds.input[ib:ie]
-    S = spectrogram(sel_sig, win_l_final, npt_overlap_final; fs = ds.fs, window = window)
-    first_x = ndx_to_t(ib, ds.fs, ds.offset)
+    sel_sig = ds.input[ib_ex:ie_ex]
+    S = spectrogram(
+        sel_sig, win_l_final, npt_overlap_final;
+        fs = ds.fs, window = window
+    )
+    first_x = ndx_to_t(ib_ex, ds.fs, ds.offset)
     times = S.time + first_x
     return (times, (collect(S.freq), S.power), was_downsamped)
 end
