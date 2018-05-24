@@ -55,13 +55,26 @@ function downsamp_req(
     (ib, ie) = clip_ndx.(t_to_ndx.([xb, xe], ds.fs, ds.offset), nin)
     win_l = length(ds.window)
     nsel = n_ndx(ib, ie)
+
+    if npt == 0 || nsel == 0
+        times = StepRangeLen(
+            Base.TwicePrecision(zero(Float64), zero(Float64)),
+            Base.TwicePrecision(one(Float64), zero(Float64)),
+            0
+        )
+        freqs = Float64[0]
+        power = Array{Float64, 2}((1,0))
+        return (times, (freqs, power, zero(Float64), ds.fs), false)
+    end
+
     noverlap = floor(Int, ds.overlap * win_l)
+    noverlap == win_l && throw(ArgumentException("Overlap must be smaller than window"))
 
     # let:
     # N := number of points in the selected region
     # l := number of points in a window
+    # d := number of overlapping samples in each window
     # w := number of windows
-    # d := number of overlapping samples
     # Then we have N = (w - 1) * l - (w - 1) * d
     # => w = (N + l - d) / (l - d)
     win_nbase = div(nin + win_l - noverlap, win_l - noverlap)
@@ -115,5 +128,14 @@ function downsamp_req(
     t_width = length(times) > 1 ? times[2] - times[1] : win_l_final / ds.fs
     f_width = length(S.freq) > 1 ? S.freq[2] - S.freq[1] : ds.fs / 2
 
-    return (times, (collect(S.freq), S.power, t_width, f_width), was_downsamped)
+    return (
+        times::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}},
+        (
+            collect(S.freq)::Vector{Float64},
+            S.power::Array{Float64, 2},
+            t_width::Float64,
+            f_width::Float64
+        ),
+        was_downsamped::Bool
+    )
 end

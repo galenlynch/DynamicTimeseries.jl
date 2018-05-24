@@ -153,10 +153,12 @@ function downsamp_req(
     (in_range, i_begin, i_end) = downsamp_range_check(
         dts, x_start_req, x_end_req, T
     )
-    if ! in_range
+    nbase = n_ndx(i_begin, i_end)
+
+    if ! in_range || nbase == 0 || reqpts == 0
         return (Vector{Float64}(), Vector{NTuple{2,S}}(), false)
     end
-    nbase = n_ndx(i_begin, i_end)
+
     binsize = max(fld(nbase, convert(T, reqpts)), one(T))
     ncache = T(length(dts.cachearrays))
     decno = min(floor(T, log10(binsize)), ncache)
@@ -179,7 +181,7 @@ function downsamp_req(
         bbounds = bin_bounds(mm)
         xs = ndx_to_t(bin_center(bbounds), dts.fs, x_start)
     end
-    return (xs::Vector{Float64}, ys::Vector{NTuple{2,S}}, was_downsampled)
+    return (xs::Vector{Float64}, ys::Vector{NTuple{2,S}}, was_downsampled::Bool)
 end
 
 function exact_downsample(

@@ -18,7 +18,9 @@ using Base.Test
             @test GLTimeseries.binsize(mm) == 10
             @test mm[1] == (1, 2)
             @test mm[end] == (1, 2)
+            mm[1:-1]
             mm2 = MaxMin(B, 10)
+            mm2[1:-1]
             @test mm2[1] == extrema(B[1:10])
             arr2d = Array{Float64, 2}(2, length(mm2))
             for (i, (emin, emax)) in enumerate(mm2)
@@ -26,6 +28,7 @@ using Base.Test
                 arr2d[2, i] = emax
             end
             mm2d = MaxMin(arr2d, 10)
+            mm2d[1:-1]
             real_e = (minimum(view(arr2d, 1, 1:10)), maximum(view(arr2d, 2, 1:10)))
             @test mm2d[1] == real_e
             mm_tup = MaxMin(mm2, 10)
@@ -38,6 +41,8 @@ using Base.Test
             @test length(mm) == 11
             (xs, mm, was_downsamped) = downsamp_req(dts, 1000, 1001, 10) # Past signal
             @test length(mm) == 0
+            (xs, mm, wd) = downsamp_req(dts, 0, 0, 1)
+            (xs, mm, wd) = downsamp_req(dts, 0, 1, 0)
         end
 
         @testset "CachingDynamicTs" begin
@@ -57,6 +62,8 @@ using Base.Test
             end
 
             cdt = CachingDynamicTs(A, fs, 0, maxpt)
+            (xs, mm, wd) = downsamp_req(cdt, 0, 0, 1)
+            (xs, mm, wd) = downsamp_req(cdt, 0, 1, 0)
             (xs, mm, was_downsamped) = downsamp_req(cdt, 0, 1, 100)
             @test length(mm) == 11
             println(duration(cdt))
@@ -79,6 +86,8 @@ using Base.Test
                 c = 5
                 mds = MappedDynamicDownsampler(cdt, make_shifter(c))
                 (xs, ys) = downsamp_req(mds, 0, 100, 10)
+                (xs, mm, wd) = downsamp_req(mds, 0, 0, 1)
+                (xs, mm, wd) = downsamp_req(mds, 0, 1, 0)
                 println(mm)
                 println(ys)
             end
@@ -88,6 +97,8 @@ using Base.Test
     @testset "spectrogram" begin
         ds = DynamicSpectrogram(A, fs, 0)
         (t, (f, s, t_w, f_w)) = downsamp_req(ds, 0, 100, 2)
+        (t, (f, s, t_w, f_w)) = downsamp_req(ds, 0, 0, 2)
+        (t, (f, s, t_w, f_w)) = downsamp_req(ds, 0, 100, 0)
     end
 
     @testset "util" begin

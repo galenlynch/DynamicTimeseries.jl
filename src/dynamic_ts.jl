@@ -22,11 +22,13 @@ function downsamp_req(
     dts::DynamicTs{S,A}, x_start, x_end, reqpoints::Integer, args...
 ) where {S, A}
     (in_range, i_begin, i_end) = downsamp_range_check(dts, x_start, x_end)
-    if ! in_range
+    npt = n_ndx(i_begin, i_end)
+
+    if ! in_range || reqpoints == 0 || npt == 0
         return (Vector{Float64}(), Vector{NTuple{2,S}}(), false)
     end
+
     # Calculate binsize
-    npt = n_ndx(i_begin, i_end)
     binsize = max(fld(npt, reqpoints), 1)
 
     was_downsampled = binsize > 1
@@ -39,7 +41,7 @@ function downsamp_req(
     bin_start_x = ndx_to_t(i_begin, dts.fs, dts.offset)
     xs = ndx_to_t(bin_center(bin_bounds(mm)), dts.fs, bin_start_x)
     ys = collect(mm)
-    return (xs::Vector{Float64}, ys::Vector{NTuple{2,S}}, was_downsampled)
+    return (xs::Vector{Float64}, ys::Vector{NTuple{2,S}}, was_downsampled::Bool)
 end
 
 duration(d::DynamicTs) = duration(length(d.input), d.fs, d.offset)
