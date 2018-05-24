@@ -6,6 +6,7 @@ using Base.Test
     const npt = 1000
     const A = ones(Int, npt)
     const B = rand(npt)
+    const C = rand(Float32, npt)
     A[1:2:end] = 2
 
     const fs = 10
@@ -95,10 +96,12 @@ using Base.Test
     end
 
     @testset "spectrogram" begin
-        ds = DynamicSpectrogram(A, fs, 0)
+        const ds = DynamicSpectrogram(A, fs, 0)
         (t, (f, s, t_w, f_w)) = downsamp_req(ds, 0, 100, 2)
         (t, (f, s, t_w, f_w)) = downsamp_req(ds, 0, 0, 2)
         (t, (f, s, t_w, f_w)) = downsamp_req(ds, 0, 100, 0)
+        const ds32 = DynamicSpectrogram(C, fs, 0)
+        (t, (f, s, t_w, f_w)) = downsamp_req(ds32, 0, 100, 0)
     end
 
     @testset "util" begin
