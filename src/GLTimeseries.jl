@@ -2,7 +2,7 @@ __precompile__()
 module GLTimeseries
 
 import Base: linearindexing, length, size, getindex, setindex!, extrema
-import GLUtilities: bin_bounds, duration
+import GLUtilities: bin_bounds, duration, make_slice_idx
 
 using
     GLUtilities,
@@ -19,6 +19,7 @@ export
     DynamicTs,
     MappedDynamicDownsampler,
     MaxMin,
+    Averager,
 
     # Functions
     cacheinfo,
@@ -37,6 +38,7 @@ export
 
 include("util.jl")
 include("maxmin.jl")
+include("averager.jl")
 include("dynamic_downsampler.jl")
 include("dynamic_ts.jl")
 include("mapped_ts.jl")

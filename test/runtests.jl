@@ -36,6 +36,28 @@ using Base.Test
             @test mm_tup[1] == real_e
         end
 
+        @testset "averager" begin
+            avg = Averager(B, 100, 0)
+            @test length(avg) == 10
+            @test size(avg) == (10,)
+            @test avg[1] == mean(B[1:100])
+            @test avg[2] == mean(B[101:200])
+            @test avg[1:2] == [mean(B[1:100]), mean(B[101:200])]
+            avg_overlap = Averager(B, 7, 3)
+            @test avg_overlap[1] == mean(B[1:7])
+            @test avg_overlap[2] == mean(B[5:11])
+            D = rand(8, 4)
+            println("D is ", D)
+            avg_2d = Averager(D, 1, 5, 2)
+            @test avg_2d[1] == mean(D[1:5, :], 1)
+            @test avg_2d[2] == mean(D[4:8, :], 1)
+            @test avg_2d[1:2] == cat(1, mean(D[1:5, :], 1), mean(D[4:8, :], 1))
+            avg_2d_2 = Averager(D, 2, 3, 1)
+            @test avg_2d_2[1] == mean(D[:, 1:3], 2)
+            avg_int = Averager(A, 10, 0)
+            @test avg_int[1] == mean(A[1:10])
+        end
+
         @testset "DynamicTs" begin
             dts = DynamicTs(A, 10, 0) # 10 Hz 0 offset, should be 100 s of signal
             (xs, mm, was_downsamped) = downsamp_req(dts, 0, 1, 10) # Get 10 values from 0 - 1 seconds
