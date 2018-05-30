@@ -129,30 +129,3 @@ function downsamp_req(
     )
 end
 
-function size_windows_expanded(n_win_max, n_point, win_l_min, overlap_frac)
-    n_overlap = floor(Int, overlap_frac * win_l_min)
-    n_overlap == win_l_min && throw(ArgumentException("Overlap must be smaller than window"))
-
-    # let:
-    # N := number of points in the selected region
-    # l := number of points in a window
-    # d := number of overlapping samples in each window
-    # w := number of windows
-    # Then we have N = (w - 1) * l - (w - 1) * d
-    # => w = (N + l - d) / (l - d)
-
-    n_win_base = div(n_point + win_l_min - n_overlap, win_l_min - n_overlap)
-
-    # Check if we have too many windows
-    if n_win_base > n_win_max
-        # Too many windows: increase their size
-
-        # f := fraction of window to overlap (=> d = fl)
-        # Substitute d = fl into the above, yielding:
-        # l = N / (w - f * (w - 1) - 1)
-        win_l = cld(n_point, n_win_max - floor(Int, overlap_frac * (n_win_max - 1)) - 1)
-    else
-        win_l = win_l_min
-    end
-    return win_l
-end

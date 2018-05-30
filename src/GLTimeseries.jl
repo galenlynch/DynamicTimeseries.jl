@@ -13,6 +13,7 @@ export
     GL_CACHEPREFIX,
     # Types
     WindowedArray,
+    DynamicWindower,
     CachingDynamicTs,
     Downsampler,
     DynamicDownsampler,
@@ -44,8 +45,9 @@ include("maxmin.jl")
 include("averager.jl")
 include("dynamic_downsampler.jl")
 include("extrema_ds.jl")
-include("dynamic_ts.jl")
+include("dynamic_windower.jl")
 include("mapped_ts.jl")
+include("dynamic_ts.jl")
 include("caching_ts.jl")
 include("caching.jl")
 include("spectrogram.jl")

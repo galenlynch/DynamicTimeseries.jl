@@ -69,6 +69,11 @@ using Base.Test
             @test avg_int[1] == mean(A[1:10])
         end
 
+        @testset "DynamicWindower" begin
+            dw = DynamicWindower(B, fs)
+            (xs, ys, wd) = downsamp_req(dw, 0, 10, 2)
+            (xs, ys, wd) = downsamp_req(dw, 0, 10, 0)
+        end
         @testset "DynamicTs" begin
             dts = DynamicTs(A, 10, 0) # 10 Hz 0 offset, should be 100 s of signal
             (xs, mm, was_downsamped) = downsamp_req(dts, 0, 1, 10) # Get 10 values from 0 - 1 seconds
