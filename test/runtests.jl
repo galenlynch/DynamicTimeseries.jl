@@ -89,7 +89,7 @@ using Base.Test
             (xs, mm, wd) = downsamp_req(cdt, 0, 1, 0)
             (xs, mm, was_downsamped) = downsamp_req(cdt, 0, 1, 100)
             @test length(mm) == 11
-            println(duration(cdt))
+            println(time_interval(cdt))
             (xs, mm, wd) = downsamp_req(cdt, 0, 100, 10, false)
             (xs, mm, was_downsamped) = downsamp_req(cdt, 0, 100, 100)
             @test length(mm) == 100

@@ -1,4 +1,4 @@
-struct DynamicTs{S<:Number, A<:AbstractVector{S}} <: DynamicDownsampler{NTuple{2, S}}
+struct DynamicTs{S<:Number, A<:AbstractVector{S}} <: ExtremaDownsampler{S}
     input::A
     fs::Float64
     offset::Float64

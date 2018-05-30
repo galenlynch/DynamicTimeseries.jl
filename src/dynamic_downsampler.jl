@@ -1,10 +1,7 @@
 "Must implement downsamp_req and duration and extrema"
 abstract type DynamicDownsampler{E} end
 
-function extrema(d::DynamicDownsampler)
-    (_, ys, _) = downsamp_req(d, duration(d)..., one(Int32), false)
-    extrema_red(ys)
-end
+
 
 function downsamp_req(
     ds::DynamicDownsampler, x_start, x_end, reqpoints::AbstractFloat, args...
@@ -25,3 +22,6 @@ function downsamp_range_check(
     i_end_clipped = clip_ndx(i_end, nin)
     return (in_range, i_begin_clipped, i_end_clipped)
 end
+
+duration(a::DynamicDownsampler) = baselength(a) / fs(a)
+time_interval(a::DynamicDownsampler) = (start_time(a), start_time(a) + duration(a))
