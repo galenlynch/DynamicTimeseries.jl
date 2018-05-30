@@ -16,12 +16,12 @@ function DynamicTs(
 end
 
 function downsamp_req(
-    dts::DynamicTs{S,A}, x_start, x_end, reqpoints::Integer, args...
-) where {S, A}
+    dts::DynamicTs{S,<:Any}, x_start, x_end, reqpoints::Integer, args...
+) where {S}
     (xs, wa, wd) = downsamp_req(dts.winput, x_start, x_end, reqpoints)
     mm = MaxMin(wa)
     ys = collect(mm)
-    return (xs::Vector{Float64}, ys::Vector{NTuple{2,S}}, wd)
+    return xs, ys::Vector{NTuple{2,S}}, wd
 end
 
 baselength(a::DynamicTs) = baselength(a.winput)

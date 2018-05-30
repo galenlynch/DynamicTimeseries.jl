@@ -27,13 +27,13 @@ function getindex(
     a::Averager{E,<:WindowedArray{<:Any,<:Any,1,<:Any}}, i::Integer
 ) where E
     v = a.winput[i]
-    mean(v)::E
+    mean(v)
 end
 
 "Method meant for when N > 1 in WindowedArray"
 function getindex(a::Averager{E, <:WindowedArray}, i::Integer) where E
     v = a.winput[i]
-    mean(v, a.winput.dim)::E
+    mean(v, a.winput.dim)
 end
 setindex!(::Averager, ::Integer) = throw(ReadOnlyMemoryError())
 
