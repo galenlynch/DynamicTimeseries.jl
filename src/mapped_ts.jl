@@ -15,6 +15,9 @@ function downsamp_req(
 end
 
 duration(d::MappedDynamicDownsampler) = duration(d.downsampler)
+fs(d::MappedDynamicDownsampler) = fs(d.downsampler)
+baselength(d::MappedDynamicDownsampler) = baselength(d.downsampler)
+start_time(d::MappedDynamicDownsampler) = start_time(d.downsampler)
 
 make_shifter(shift) = (x) -> shift_extrema!(shift, x)
 

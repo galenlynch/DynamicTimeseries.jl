@@ -44,4 +44,6 @@ function downsamp_req(
     return (xs::Vector{Float64}, ys::Vector{NTuple{2,S}}, was_downsampled::Bool)
 end
 
-duration(d::DynamicTs) = duration(length(d.input), d.fs, d.offset)
+baselength(a::DynamicTs) = length(a.input)
+start_time(a::DynamicTs) = a.offset
+fs(a::DynamicTs) = a.fs

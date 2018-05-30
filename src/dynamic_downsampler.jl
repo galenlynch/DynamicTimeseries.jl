@@ -1,4 +1,11 @@
-"Must implement downsamp_req and duration and extrema"
+"""
+Must implement:
+downsamp_req
+extrema
+fs
+baselength
+start_time
+"""
 abstract type DynamicDownsampler{E} end
 
 
@@ -10,13 +17,15 @@ function downsamp_req(
 end
 
 function downsamp_range_check(
-    dts::DynamicDownsampler, x_start, x_end, ::Type{T} = Int32
+    dts::DynamicDownsampler, x_start::Real, x_end::Real, ::Type{T} = Int32
 ) where {T<:Integer}
     x_start <= x_end || throw(ArgumentError("x_start must be before x_end"))
-    nin = T(length(dts.input))
+    nin = T(baselength(dts))
     # Find bounding indices
-    i_begin = t_to_ndx(x_start, dts.fs, dts.offset, T)
-    i_end = t_to_ndx(x_end, dts.fs, dts.offset, T)
+    d_fs = fs(dts)
+    d_ss = start_time(dts)
+    i_begin = t_to_ndx(x_start, d_fs, d_ss, T)
+    i_end = t_to_last_ndx(x_end, d_fs, d_ss, T)
     in_range = i_begin <= nin && i_end >= 1
     i_begin_clipped = clip_ndx(i_begin, nin)
     i_end_clipped = clip_ndx(i_end, nin)

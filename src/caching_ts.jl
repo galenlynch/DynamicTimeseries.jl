@@ -232,7 +232,9 @@ function approximate_downsample(
     return (xs, ys)
 end
 
-duration(dts::CachingDynamicTs) = duration(length(dts.input), dts.fs, dts.offset)
+fs(dts::CachingDynamicTs) = dts.fs
+start_time(dts::CachingDynamicTs) = dts.offset
+baselength(dts::CachingDynamicTs) = length(dts.input)
 
 ndx_to_dec_ndx(i::T, dec::T) where {T<:Integer} = fld(i - one(T), T(10) ^ dec) + one(T)
 

@@ -38,7 +38,9 @@ end
 fft_dtype(::Type{T}) where {T<:Integer} = Float64
 fft_dtype(::Type{T}) where {T<:AbstractFloat} = T
 
-duration(d::DynamicSpectrogram) = duration(length(d.input), d.fs, d.offset)
+fs(d::DynamicSpectrogram) = d.fs
+baselength(d::DynamicSpectrogram) = length(d.input)
+start_time(d::DynamicSpectrogram) = d.offset
 
 function extrema(d::DynamicSpectrogram)
     freqs = rfftfreq(length(d.window), d.fs)
