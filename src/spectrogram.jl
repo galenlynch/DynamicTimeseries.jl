@@ -1,50 +1,36 @@
-struct DynamicSpectrogram{T<:AbstractFloat, A<:AbstractVector} <: DynamicDownsampler{Tuple{Vector{Float64}, Array{T, 2}}}
-    input::A
-    fs::Float64
-    offset::Float64
+struct DynamicSpectrogram{
+    T<:AbstractFloat, W<:DynamicWindower{<:Any,<:Number,1,<:Any}
+} <: AverageDownsampler{Tuple{Vector{Float64}, Array{T, 2}}}
+    winput::W
     window::Vector{Float64}
-    overlap::Float64
-    function DynamicSpectrogram{T, A}(
-        input::A,
-        fs::Float64,
-        offset::Float64,
-        window::Vector{Float64},
-        overlap::Float64,
-        ::Type{T}
-    ) where {T<:AbstractFloat, A<:AbstractVector}
-        @assert fs > 0 "fs must be greater than zero"
-        @assert 0 <= overlap < 1 "overlap must be in interval [0, 1)"
-        return new(input, fs, offset, window, overlap)
+    function DynamicSpectrogram{T,W}(
+        winput::W, window::Vector{Float64}
+    ) where {T<:AbstractFloat,W<:DynamicWindower{<:Any,<:Number,1,<:Any}}
+        if length(window) != winput.wmin
+            throw(ArgumentError("wmin must match window length"))
+        end
+        new(winput, window)
     end
 end
+
+function DynamicSpectrogram(
+    winput::W, window::Vector{Float64} = hanning(512)
+) where {T,W<:DynamicWindower{<:Any,T,1,<:Any}}
+    S = div_type(T)
+    DynamicSpectrogram{S,W}(winput, window)
+end
+
 function DynamicSpectrogram(
     input::A,
     fs::Real,
     offset::Real = 0,
+    overlap::Float64 = 0.8,
     window::Vector{Float64} = hanning(512),
-    overlap::Float64 = 0.8
 ) where {T<:Real, A<:AbstractVector{T}}
-    S = fft_dtype(T)
-    return DynamicSpectrogram{S, A}(
-        input,
-        convert(Float64, fs),
-        convert(Float64, offset),
-        window,
-        convert(Float64, overlap),
-        S
+    DynamicSpectrogram(
+        DynamicWindower(input, fs, offset, 1, overlap, length(window)),
+        window
     )
-end
-
-fft_dtype(::Type{T}) where {T<:Integer} = Float64
-fft_dtype(::Type{T}) where {T<:AbstractFloat} = T
-
-fs(d::DynamicSpectrogram) = d.fs
-baselength(d::DynamicSpectrogram) = length(d.input)
-start_time(d::DynamicSpectrogram) = d.offset
-
-function extrema(d::DynamicSpectrogram)
-    freqs = rfftfreq(length(d.window), d.fs)
-    return (freqs[1], freqs[end])
 end
 
 """
@@ -59,73 +45,48 @@ function downsamp_req(
     windowfun::Function = hanning
 ) where {T<:AbstractFloat}
     # Figure out what was asked of us
-    nin = length(ds.input)
-    (ib, ie) = clip_ndx.(t_to_ndx.([xb, xe], ds.fs, ds.offset), nin)
-    win_l = length(ds.window)
-    nsel = n_ndx(ib, ie)
+    win_l, overlap, ib_ex, ie_ex = downsamp_req_window_info(ds.winput, xb, xe, npt)
 
-    if npt <= 0 || nsel == 0
-        times = StepRangeLen(
-            Base.TwicePrecision(zero(Float64), zero(Float64)),
-            Base.TwicePrecision(one(Float64), zero(Float64)),
-            0
-        )
-        freqs = Float64[0]
-        power = Array{T, 2}((1,0))
-        return (times, (freqs, power, zero(Float64), ds.fs), false)
-    end
 
-    if npt > 1
-        win_l_target = size_windows_expanded(npt, nsel, win_l, ds.overlap)
-    else
-        win_l_target = nsel
-    end
-
-    # Check if we have enough data for our windows
-    if nsel < win_l_target
-        win_l_final = nsel
-        npt_overlap_final = 0
-    else
-        win_l_final = win_l_target
-        npt_overlap_final = floor(Int, ds.overlap * win_l_final)
-    end
-
-    # Check if our window function is the right size
-    was_downsampled = length(ds.window) != win_l_final
-    if was_downsampled
-        window = windowfun # Pass the function itself
-    else
-        window = ds.window
-    end
-
-    # Expand selected data for the bins on the edge
-    half_w = div(win_l_final, 2)
-    ib_ex = max(1, ib - half_w)
-    ie_ex = min(nin, ie + half_w)
-
+    v = view(basedata(ds.winput), ib_ex:ie_ex)
     # Select the portion of the signal in range
-    sel_sig = ds.input[ib_ex:ie_ex]
+
+    window = win_l == length(ds.window) ? ds.window : hanning
+
+    srate = fs(ds.winput)
 
     S = spectrogram(
-        sel_sig, win_l_final, npt_overlap_final;
-        fs = ds.fs, window = window
+        v, win_l, overlap;
+        fs = srate, window = window
     )
 
-    first_x = ndx_to_t(ib_ex, ds.fs, ds.offset)
+    first_x = ndx_to_t(ib_ex, fs(ds.winput), start_time(ds.winput))
     times = S.time + first_x
 
-    t_width = length(times) > 1 ? times[2] - times[1] : win_l_final / ds.fs
-    f_width = length(S.freq) > 1 ? S.freq[2] - S.freq[1] : ds.fs / 2
+    t_width = length(times) > 1 ? times[2] - times[1] : win_l / srate
+    f_width = length(S.freq) > 1 ? S.freq[2] - S.freq[1] : srate / 2
 
     return (
-        times::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}},
+        times::StepRangeLen{
+            Float64,
+            Base.TwicePrecision{Float64},
+            Base.TwicePrecision{Float64}
+        },
         (
             collect(S.freq)::Vector{Float64},
             S.power::Array{T, 2},
             t_width::Float64,
             f_width::Float64
         ),
-        was_downsampled::Bool
+        false
     )
 end
 
+fs(d::DynamicSpectrogram) = fs(d.winput)
+baselength(d::DynamicSpectrogram) = baselength(d.winput)
+start_time(d::DynamicSpectrogram) = start_time(d.winput)
+
+function extrema(d::DynamicSpectrogram)
+    freqs = rfftfreq(length(d.window), fs(d.winput))
+    return (freqs[1], freqs[end])
+end

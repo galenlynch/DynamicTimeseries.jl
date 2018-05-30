@@ -13,7 +13,7 @@ struct DynamicWindower{E,T,N,A<:AbstractArray{T,N}} <: DynamicDownsampler{E}
         f_overlap::Float64 = 0.0,
         wmin::Int = 1
     ) where {E,T,N,A<:AbstractArray{T,N}}
-        validate_dynamic_windower_args(dim, N, f_overlap, wmin)
+        validate_dynamic_windower_args(dim, N, f_overlap, wmin, fs)
         return new(input, fs, offset, dim, f_overlap, wmin)
     end
 end
@@ -23,7 +23,7 @@ function DynamicWindower(
     fs::Real,
     offset::Real = 0,
     dim::Integer = 1,
-    f_overlap::AbstractFloat = 0.0,
+    f_overlap::Real = 0,
     wmin::Integer = 1
 ) where {T,N,A<:AbstractArray{T,N}}
     if dim < 1 || dim > N
@@ -42,8 +42,11 @@ function DynamicWindower(
 end
 
 function validate_dynamic_windower_args(
-    dim::Integer, N::Integer, f_overlap::AbstractFloat, wmin::Integer
+    dim::Integer, N::Integer, f_overlap::AbstractFloat, wmin::Integer, fs::Real
 )
+    if fs <= 0
+        throw(ArgumentError("fs must be greater than zero"))
+    end
     if dim < 1 || dim > N
         throw(ArgumentError("dim $dim does not match input with $N dimensions"))
     end
@@ -59,6 +62,7 @@ end
 
 fs(d::DynamicWindower) = d.fs
 baselength(d::DynamicWindower) = length(d.input)
+basedata(d::DynamicWindower) = d.input
 start_time(d::DynamicWindower) = d.offset
 
 """
@@ -71,15 +75,31 @@ start_time(d::DynamicWindower) = d.offset
 function downsamp_req(
     ds::DynamicWindower{E,<:Any,N,<:Any}, xb, xe, npt::S
 ) where {S<:Integer,E,N}
+    win_l, overlap, ib_ex, ie_ex = downsamp_req_window_info(ds, xb, xe, npt)
+
+    slice_idx = make_slice_idx(N, ds.dim, ib_ex:ie_ex)
+    v = view(ds.input, slice_idx...)
+    wa = WindowedArray(v, win_l, ds.dim, overlap)
+
+    first_t = ndx_to_t(ib_ex, fs(ds), ds.offset)
+    times = ndx_to_t(bin_center(bin_bounds(wa)), fs(ds), first_t)
+
+    was_downsampled = win_l > 1
+
+    return times, wa, was_downsampled
+end
+
+function downsamp_req_window_info(
+    ds::DynamicWindower{E,<:Any,N,<:Any}, xb, xe, npt::S
+) where {S<:Integer,E,N}
     (in_range, ib, ie) = downsamp_range_check(ds, xb, xe, S)
     nsel = n_ndx(ib, ie)
     if ! in_range || npt <= 0 || nsel == 0
         # Bail out early with empty result
-        win_l = 1
-        slice_idx = make_slice_idx(N, ds.dim, 1:0)
+        win_l = one(S)
+        ib_ex = one(S)
+        ie_ex = zero(S)
         overlap = zero(S)
-        was_downsampled = false
-        i_start = 1
     else
         nin = S(baselength(ds))
         win_l_target = size_windows_expanded(
@@ -88,16 +108,15 @@ function downsamp_req(
 
         if win_l_target > nsel
             win_l = nsel
-            npt_out = one(S)
+            npt_adj = one(S)
         else
             win_l = win_l_target
-            npt_out = npt
+            npt_adj = npt
         end
 
-        was_downsampled = win_l > 1
         overlap = floor(S, ds.f_overlap * win_l)
 
-        if npt_out > 1
+        if npt_adj > 1
             half_w = div(win_l, S(2))
             # Expand start index so the first bin is roughly centered at xb
             ib_ex = max(one(S), ib - half_w)
@@ -115,7 +134,7 @@ function downsamp_req(
             # ie = cn = sn + (l - 1) / 2 = s + (l-d)(w-1) + (l-1)/2
             # so w = (ie - s + l - (l - 1) / 2) / (l - d)
             # where w is the number of windows
-            nout = ceil(
+            npt_out = ceil(
                 S,
                 (ie - ib_ex + win_l - (win_l - 1) / 2) / (win_l - overlap)
             )
@@ -124,24 +143,14 @@ function downsamp_req(
             # p = s + w*l - (w - 1)*d - 1
             ie_ex = min(
                 nin,
-                ib_ex + nout * win_l - (nout - one(S)) * overlap - one(S)
+                ib_ex + npt_out * win_l - (npt_out - one(S)) * overlap - one(S)
             )
-
-            slice_idx = make_slice_idx(N, ds.dim, ib_ex:ie_ex)
-            i_start = ib_ex
         else
-            slice_idx = make_slice_idx(N, ds.dim, ib:ie)
-            i_start = ib
+            ib_ex = ib
+            ie_ex = ie
         end
     end
-
-    v = view(ds.input, slice_idx...)
-    wa = WindowedArray(v, win_l, ds.dim, overlap)
-
-    first_t = ndx_to_t(i_start, fs(ds), ds.offset)
-    times = ndx_to_t(bin_center(bin_bounds(wa)), fs(ds), first_t)
-
-    return times, wa, was_downsampled
+    return win_l, overlap, ib_ex, ie_ex
 end
 
 function size_windows_expanded(
