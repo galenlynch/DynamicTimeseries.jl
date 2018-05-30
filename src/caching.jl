@@ -1,22 +1,20 @@
 const GL_CACHEPREFIX = "GLTSCACHE"
 
-cache_reg(fid::Integer, ::Type{T}) where {T<:Number} = Regex(
-    string("^", GL_CACHEPREFIX, '_', fid, '_', T, "_(\\d+)_(\\d+)\$")
+cache_reg(fid::Integer, ::Type{T}, n::Integer) where {T<:Number} = Regex(
+    string("^", GL_CACHEPREFIX, '_', fid, '_', T, '_', n, "_(\\d+)_(\\d+)\$")
 )
 
 function write_cache_file(
+    ::Type{T},
     input::AbstractArray,
     autoclean::Bool = true,
     basename::AbstractString = tempname()
-)
-    mm = MaxMin(input, 10)
-    npair = length(mm)
-    path = basename * "_$npair"
+) where {T<:ExtremaDownsampler}
+    (cachelength, cachedata) = prepare_cachefile(T, input, basename)
+    path = string(basename, '_', cachelength)
     io = open(path, "w+")
     try
-        for extremum in mm
-            write(io, extremum...)
-        end
+        write_cache_contents(T, io, cachedata)
     catch
         close(io)
         rm(path)
@@ -24,29 +22,29 @@ function write_cache_file(
     end
     close(io)
     autoclean && atexit(() -> rm(path))
-    return (path, npair)
+    return (path, cachelength)
 end
 
 function write_cache_files(
+    ::Type{D},
     input::A,
     sizehint::Integer,
     autoclean::Bool = true;
     fid::Integer = -1,
     cachedir::AbstractString = tempdir()
-)where {T<: Number, N, A<:AbstractArray{T, N}}
+)where {D<:DynamicDownsampler, T<:Number, N, A<:AbstractArray{T, N}}
     nsamp = length(input)
+    cachedims = cache_dims(D)
     if fid > 0
-        isdir(cachedir) || throw(
-            ArgumentError(
-                "cachedir ",
-                cachedir,
-                "is not a directory"
-            )
-        )
-        basestr = string(GL_CACHEPREFIX, '_', fid, '_', T)
+        if ! isdir(cachedir)
+            throw(ArgumentError(
+                "cachedir ", cachedir, " is not a directory"
+            ))
+        end
+        basestr = string(GL_CACHEPREFIX, '_', fid, '_', T, '_', cachedims)
         basename = joinpath(cachedir, basestr)
     else
-        basename = tempname() * "_$T"
+        basename = string(tempname(), '_', T, '_', cachedims)
     end
     if sizehint < nsamp
         # Preallocate
@@ -56,15 +54,16 @@ function write_cache_files(
 
         # Make first cache file
         dname = basename * "_1"
-        (cachepaths[1], lengths[1]) = write_cache_file(input, autoclean, dname)
-        cachearr = open_cache_file(T, lengths[1], cachepaths[1])
+        (cachepaths[1], lengths[1]) = write_cache_file(D, input, autoclean, dname)
+        cachearr = open_cache_file(D, lengths[1], cachepaths[1])
         # Make subsequent cache files
         for dno = 2:ndecade
-            dname = basename * "_$dno"
+            dname = string(basename, '_', dno)
             try
                 (cachepaths[dno], lengths[dno]) = write_cache_file(
-                    cachearr, autoclean, dname)
-                cachearr = open_cache_file(T, lengths[dno], cachepaths[dno])
+                    D, cachearr, autoclean, dname
+                )
+                cachearr = open_cache_file(D, lengths[dno], cachepaths[dno])
             catch
                 for i = 1:(dno - 1)
                     rm(cachepaths[i])
@@ -79,24 +78,17 @@ function write_cache_files(
     return (cachepaths, lengths)
 end
 
-function open_cache_file(::Type{T}, npair::Integer, path::AbstractString) where T
-    cachearray = open(path, "r") do ior
-        Mmap.mmap(ior, Array{T, 2}, (2, npair))
-    end
-    return cachearray
-end
-
 function open_cache_files(
-    ::Type{T},
+    ::Type{D},
     paths::Vector{String},
-    lengths::A,
+    lengths::AbstractArray{<:Integer},
     autoclean::Bool = true
-) where {T, S<:Integer, A<:AbstractArray{S}}
+) where {D<:ExtremaDownsampler}
     ndecade = length(paths)
-    cachearr = Vector{Array{T, 2}}(ndecade)
+    cachearr = new_cache_arrs(D, ndecade)
     try
         for dno in 1:ndecade
-            cachearr[dno] = open_cache_file(T, lengths[dno], paths[dno])
+            cachearr[dno] = open_cache_file(D, lengths[dno], paths[dno])
             autoclean && atexit(() -> rm(paths[dno]))
         end
     catch
@@ -112,16 +104,16 @@ function cacheinfo(a::C) where {S<:Number, A, C<:CachingDynamicTs{S, A}}
 end
 
 function open_cache_files(
-    ::Type{T}, cachedir::AbstractString, fid::Integer
-) where T
-    (fpaths, lengths) = parse_cache_filenames(cachedir, fid, T)
-    return open_cache_files(T, fpaths, lengths, false)
+    ::Type{D}, cachedir::AbstractString, fid::Integer
+) where {T, D<:ExtremaDownsampler{T}}
+    (fpaths, lengths) = parse_cache_filenames(cachedir, fid, T, 2)
+    return open_cache_files(D, fpaths, lengths, false)
 end
 
 function parse_cache_filenames(
-    cachedir::AbstractString, fid::Integer, ::Type{T}
+    cachedir::AbstractString, fid::Integer, ::Type{T}, n::Integer
 ) where {T<:Number}
-    matches = dir_match_files(cache_reg(fid, T), cachedir)
+    matches = dir_match_files(cache_reg(fid, T, n), cachedir)
     nm = length(matches)
 
     lengths = Vector{Int}(nm)
@@ -140,4 +132,40 @@ function parse_cache_filenames(
         lengths = lengths[filenos]
     end
     return (fpaths, lengths)
+end
+
+function validate_cache_arrays(
+    cachepaths::AbstractVector{<:AbstractString},
+    cachearrays::AbstractVector{<:AbstractArray},
+    baselength::Integer,
+    dim::Integer = 1,
+    dec_factor::Integer = 10
+)
+    ncache = length(cachepaths)
+    if ncache != length(cachearrays)
+            throw(ArgumentError(
+                "cachearrays and cachepaths must be the same length"
+                ))
+    end
+    lens = Vector{Int}(ncache)
+    lens .= size.(cachearrays, dim)
+    last_len = baselength
+    for l in lens
+        if cld(last_len, l) != dec_factor
+            throw(ArgumentError(
+                "Cache arrays are not decreasing in size by a factor of $dec_factor"
+            ))
+        end
+        last_len = l
+    end
+end
+
+function sort_cache_files(
+    cachepaths::AbstractArray{<:AbstractString},
+    cachelengths::AbstractArray{<:Integer},
+)
+    p = sortperm(cachelengths; rev=true)
+    sorted_cachelengths = cachelengths[p]
+    sorted_cachepaths = cachepaths[p]
+    return sorted_cachepaths, sorted_cachelengths
 end

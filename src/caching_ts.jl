@@ -11,10 +11,8 @@ struct CachingDynamicTs{S<:Number, A<:AbstractVector{S}} <: ExtremaDownsampler{S
         cachearrays::Vector{Array{S, 2}},
         cachepaths::Vector{String}
     ) where {S<:Number, A<:AbstractVector{S}}
-        if length(cachepaths) != length(cachearrays)
-            throw(ArgumentError("cachearrays must be same length as cachepaths"))
-        end
-        return new(input, fs, offset, cachearrays, cachepaths)
+        validate_cache_arrays(cachepaths, cachearrays, length(input), 2)
+        new(input, fs, offset, cachearrays, cachepaths)
     end
 end
 
@@ -44,34 +42,56 @@ function CachingDynamicTs(
     checkfiles::Bool = true
 ) where {S<:Number, A<:AbstractVector{S}}
     if checkfiles
-        p = sortperm(cachelengths; rev=true)
-        cachelengths = cachelengths[p]
-        cachepaths = cachepaths[p]
-        last_len = length(input)
-        for l in cachelengths
-            if cld(last_len, l) != 10
-                error(
-"last cache was $last_len, but this cache is $l which is not a factor of 10"
-                )
-            end
-            last_len = l
-        end
+        cachepaths, cachelengths = sort_cache_files(cachepaths, cachelengths)
     end
-    cachearrs = open_cache_files(S, cachepaths, cachelengths, autoclean)
+    cachearrs = open_cache_files(
+        CachingDynamicTs{S,A}, cachepaths, cachelengths, autoclean
+    )
     CachingDynamicTs(input, fs, offset, cachearrs, cachepaths)
 end
 
 function CachingDynamicTs(
-    input::AbstractVector{<:Number},
+    input::A,
     fs::Real,
     offset::Real = 0,
     sizehint::Integer = 70, # x dimension in pixels of a small window?
     autoclean::Bool = true
-)
-    (cachepaths, cachelengths) = write_cache_files(input, sizehint, autoclean)
+) where {S<:Number, A<:AbstractArray{S}}
+    (cachepaths, cachelengths) = write_cache_files(
+        CachingDynamicTs{S,A}, input, sizehint, autoclean
+    )
     CachingDynamicTs(
         input, fs, offset, cachepaths, cachelengths, false; checkfiles=false
     )
+end
+
+cache_dims(::Type{D}) where D<:ExtremaDownsampler = 2
+
+function open_cache_file(
+    ::Type{D}, npair::Integer, path::AbstractString
+) where {T<:Number, D<:ExtremaDownsampler{T}}
+    cachearray = open(path, "r") do ior
+        Mmap.mmap(ior, Array{T, 2}, (2, npair))
+    end
+    return cachearray
+end
+
+function new_cache_arrs(::Type{D}, n::Integer) where {T, D<:ExtremaDownsampler{T}}
+    Vector{Array{T,2}}(n)
+end
+
+function prepare_cachefile(
+    ::Type{T}, input::AbstractArray, basename::AbstractString
+) where T<:ExtremaDownsampler
+    mm = MaxMin(input, 10)
+    npair = length(mm)
+    return (npair, mm)
+end
+
+function write_cache_contents(::Type{T}, io::IO, mm::MaxMin) where T<:ExtremaDownsampler
+    for extremum in mm
+        write(io, extremum...)
+    end
 end
 
 dec_ndx_greater(i, dec) = cld(i - 1, 10 ^ dec) + 1

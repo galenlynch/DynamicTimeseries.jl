@@ -82,17 +82,22 @@ using Base.Test
         @testset "CachingDynamicTs" begin
             const maxpt = 10
             @testset "Caching" begin
-                (path, npair) = write_cache_file(A)
-                (files, lengths) = write_cache_files(A, 10)
+                cachetype = CachingDynamicTs{Int, typeof(A)}
+                (path, npair) = write_cache_file(
+                    cachetype, A
+                )
+                (files, lengths) = write_cache_files(
+                    cachetype, A, 10
+                )
                 println(files)
                 println(lengths)
                 cachedir = tempdir()
                 (files, lengths) = write_cache_files(
-                    A, 10, true;
+                    cachetype, A, 10, true;
                     cachedir=cachedir, fid=1)
                 println(files)
                 println(lengths)
-                cachearr = open_cache_files(Int, cachedir, 1)
+                cachearr = open_cache_files(cachetype, cachedir, 1)
             end
 
             cdt = CachingDynamicTs(A, fs, 0, maxpt)
