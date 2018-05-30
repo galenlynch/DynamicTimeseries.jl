@@ -22,6 +22,7 @@ export
     MappedDynamicDownsampler,
     MaxMin,
     Averager,
+    AveragingTs,
 
     # Functions
     cacheinfo,
@@ -50,6 +51,7 @@ include("mapped_ts.jl")
 include("dynamic_ts.jl")
 include("caching_ts.jl")
 include("caching.jl")
+include("averaging_ds.jl")
 include("spectrogram.jl")
 
 end # module
