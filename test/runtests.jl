@@ -12,6 +12,18 @@ using Base.Test
     const fs = 10
 
     @testset "timeseries" begin
+        @testset "WindowedArray" begin
+            wa = WindowedArray(A, 10)
+            @test all(wa[1] == A[1:10])
+            @test all(wa[2] == A[11:20])
+            wa[end]
+            wa_overlap = WindowedArray(A, 6, 1, 2)
+            @test all(wa_overlap[1] == A[1:6])
+            @test all(wa_overlap[2] == A[5:10])
+            wab = WindowedArray(B, 10)
+            @test all(wab[1] == B[1:10])
+        end
+
         @testset "maxmin" begin
             mm = MaxMin(A, 10)
             @test length(mm) == 100
