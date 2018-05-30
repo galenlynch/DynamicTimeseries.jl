@@ -76,8 +76,8 @@ using Base.Test
         end
         @testset "DynamicTs" begin
             dts = DynamicTs(A, 10, 0) # 10 Hz 0 offset, should be 100 s of signal
-            (xs, mm, was_downsamped) = downsamp_req(dts, 0, 1, 10) # Get 10 values from 0 - 1 seconds
-            @test length(mm) == 11
+            (xs, mm, was_downsamped) = downsamp_req(dts, 1, 2, 10) # Get 10 values from 0 - 1 seconds
+            @test length(mm) == 7
             (xs, mm, was_downsamped) = downsamp_req(dts, 1000, 1001, 10) # Past signal
             @test length(mm) == 0
             (xs, mm, wd) = downsamp_req(dts, 0, 0, 1)
