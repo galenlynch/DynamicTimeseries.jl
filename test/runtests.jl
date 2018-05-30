@@ -49,24 +49,23 @@ using Base.Test
         end
 
         @testset "averager" begin
-            avg = Averager(B, 100, 0)
+            avg = Averager(B, 100)
             @test length(avg) == 10
             @test size(avg) == (10,)
             @test avg[1] == mean(B[1:100])
             @test avg[2] == mean(B[101:200])
             @test avg[1:2] == [mean(B[1:100]), mean(B[101:200])]
-            avg_overlap = Averager(B, 7, 3)
+            avg_overlap = Averager(B, 7, 1, 3)
             @test avg_overlap[1] == mean(B[1:7])
             @test avg_overlap[2] == mean(B[5:11])
             D = rand(8, 4)
             println("D is ", D)
-            avg_2d = Averager(D, 1, 5, 2)
+            avg_2d = Averager(D, 5, 1, 2)
             @test avg_2d[1] == mean(D[1:5, :], 1)
             @test avg_2d[2] == mean(D[4:8, :], 1)
-            @test avg_2d[1:2] == cat(1, mean(D[1:5, :], 1), mean(D[4:8, :], 1))
-            avg_2d_2 = Averager(D, 2, 3, 1)
+            avg_2d_2 = Averager(D, 3, 2, 1)
             @test avg_2d_2[1] == mean(D[:, 1:3], 2)
-            avg_int = Averager(A, 10, 0)
+            avg_int = Averager(A, 10)
             @test avg_int[1] == mean(A[1:10])
         end
 

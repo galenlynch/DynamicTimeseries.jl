@@ -1,116 +1,45 @@
-struct Averager{
-    E, T, N, A<:AbstractArray{T, N}
-} <: Downsampler{E, 1}
-    input::A
-    dim::Int
-    binsize::Int
-    overlap::Int
-    len::Int
-    input_len::Int
-    function Averager{E,T,N,A}(
-        input::A, dim::Int, binsize::Int, overlap::Int = 0
-    ) where {E,T,N,A<:AbstractArray{T,N}}
-        dims = size(input)
-        if dim <= 0 || dim > length(dims)
-            throw(ArgumentError("dimension does not match input"))
-        end
-        input_len  = size(input, dim)
-        if binsize < 0 || binsize > input_len
-            throw(ArgumentError("binsize must be between 0 and input length"))
-        end
-        if overlap < 0 || overlap >= binsize
-            throw(ArgumentError("overlap must be between 0 and binsize"))
-        end
-        # number of windows in signal
-        # let N:= length of input
-        # l := length of window
-        # d := length of overlap
-        # w := number of windows
-        # Then, N = w * l - (w - 1) * d
-        # So N = wl - wd + d = w(l-d) + d
-        # w = (N - d) / (l - d)
-        len = cld(input_len - overlap, binsize - overlap)
-        return new(input, dim, binsize, overlap, len, input_len)
-    end
+struct Averager{E,W<:WindowedArray} <: Downsampler{E,1}
+    winput::W
+end
+
+function Averager(winput::W) where {T,N,W<:WindowedArray{<:Any,T,N,<:Any}}
+    S = div_type(T)
+    E = Array{S,N}
+    Averager{E,W}(winput)
+end
+function Averager(winput::W) where {T,W<:WindowedArray{<:Any,T,1,<:Any}}
+    S = div_type(T)
+    Averager{S,W}(winput)
 end
 
 function Averager(
-    input::A, dim::Integer, binsize::Integer, overlap::Integer
-) where {T,N,A<:AbstractArray{T,N}}
-    S = div_type(T)
-    E = Array{S, N}
-    Averager{E,T,N,A}(
-        input,
-        convert(Int, dim),
-        convert(Int, binsize),
-        convert(Int, overlap)
-    )
+    input::AbstractArray, binsize::Integer, dim::Integer = 1, overlap::Integer=0
+)
+    winput = WindowedArray(input, binsize, dim, overlap)
+    Averager(winput)
 end
 
-function Averager(
-    input::A, binsize::Integer, overlap::Integer
-) where {T,A<:AbstractVector{T}}
-    S = div_type(T)
-    Averager{S,T,1,A}(input, 1, convert(Int, binsize), convert(Int, overlap))
-end
+length(a::Averager) = length(a.winput)
+size(a::Averager) = size(a.winput)
 
-length(a::Averager) = a.len
-size(a::Averager) = (a.len,)
-Base.IndexStyle(::Type{T}) where T<:Averager = IndexLinear()
-setindex!(::Averager, ::Integer) = throw(ReadOnlyMemoryError())
 
-binsize(a::Averager) = a.binsize
-
-function sliceview(a::Averager, i::Integer)
-    (bb, be) = bin_bounds(i, a)
-    idxes = make_slice_idx(a, bb, be)
-    view(a.input, idxes...)
-end
-
-function getindex(a::Averager{E, <:Any, N, <:Any}, i::Integer) where {E,N}
-    v = sliceview(a, i)
-    mean(v, a.dim)::E
-end
-
-function getindex(a::Averager{E,<:Any,1,<:Any}, i::Integer) where E
-    v = sliceview(a, i)
+function getindex(
+    a::Averager{E,<:WindowedArray{<:Any,<:Any,1,<:Any}}, i::Integer
+) where E
+    v = a.winput[i]
     mean(v)::E
 end
 
-function getindex(
-    a::Averager{E,<:Any, N, <:Any}, idxes::OrdinalRange{<:Integer,<:Any}
-) where {E,N}
-    outdims = [size(a.input)...]
-    outdims[a.dim] = length(idxes)
-    out = E(outdims...)
-    for i in idxes
-        slice_idx = make_slice_idx(a, i)
-        out[slice_idx...] = a[i]
-    end
-    out
+"Method meant for when N > 1 in WindowedArray"
+function getindex(a::Averager{E, <:WindowedArray}, i::Integer) where E
+    v = a.winput[i]
+    mean(v, a.winput.dim)::E
 end
+setindex!(::Averager, ::Integer) = throw(ReadOnlyMemoryError())
 
-function getindex(
-    a::Averager{E,<:Any,1,<:Any}, idxes::OrdinalRange{<:Integer,<:Any}
-) where {E}
-    out = Vector{E}(length(idxes))
-    for (i, idx) in enumerate(idxes)
-        out[i] = a[idx]
-    end
-    out
-end
+Base.IndexStyle(::Type{T}) where {W,T<:Averager{<:Any,W}} = IndexStyle(W)
+binsize(a::Averager) = binsize(a.winput)
 
-function make_slice_idx(a::Averager, idx) 
-    ndims = length(size(a.input))
-    make_slice_idx(ndims, a.dim, idx)
-end
+bin_bounds(a::Averager, args...) = bin_bounds(a.winput, args...)
+bin_bounds(i::Integer, a::Averager) = bin_bounds(i, a.winput)
 
-function make_slice_idx(a::Averager, bb::T, be::T) where T<:Integer
-    make_slice_idx(a, bb:be)
-end
-
-function bin_bounds(i::T, a::Averager) where {T<:Integer}
-    start_offset = (i - one(T)) * T(a.binsize - a.overlap)
-    end_idx = start_offset + T(a.binsize)
-    return (start_offset + one(T), end_idx)
-end

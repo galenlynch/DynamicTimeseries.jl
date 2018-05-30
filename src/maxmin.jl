@@ -1,67 +1,54 @@
 abstract type Downsampler{T, N} <: AbstractArray{T, N} end
 
-struct MaxMin{T<:Number, S, A<:AbstractArray} <: Downsampler{Tuple{T, T}, 1}
-    input::A
-    binsize::Int
-    len::Int
-    input_len::Int
-    function MaxMin{T,S,A}(input::A, binsize::Int) where
-        {T<:Number, S<:Number, A<:AbstractVector{S}}
-        input_len = length(input)
-        len = cld(input_len, binsize)
-        return new(input, binsize, len, input_len)
+struct MaxMin{T<:Number, W<:WindowedArray} <: Downsampler{Tuple{T, T}, 1}
+    winput::W
+
+    function MaxMin{T,W}(winput::W) where
+        {T<:Number, W<:WindowedArray{<:Any,T,1,<:Any}}
+        new(winput)
     end
-    function MaxMin{T,S,A}(input::A, binsize::Int) where
-        {T<:Number, S<:Number, A<:AbstractArray{S, 2}}
-        @assert size(input, 1) == 2 "assumes max and min are on first dimension"
-        input_len = size(input, 2)
-        len = cld(input_len, binsize)
-        return new(input, binsize, len, input_len)
+
+    function MaxMin{T,W}(winput::W) where
+        {T<:Number, S<:NTuple{2,T}, W<:WindowedArray{<:Any,S,<:Any,<:Any}}
+        new(winput)
     end
-    function MaxMin{T,S,A}(input::A, binsize::Int) where
-        {T<:Number, S<:NTuple{2, T}, A<:AbstractVector{S}}
-        input_len = length(input)
-        len = cld(input_len, binsize)
-        return new(input, binsize, len, input_len)
+
+    function MaxMin{T,W}(winput::W) where
+        {T<:Number, W<:WindowedArray{<:Any,T,2,<:Any}}
+        if size(winput.input, 1) != 2
+            throw(ArgumentError("assumes max and min are on first dimension"))
+        end
+        new(winput)
     end
-end
-function MaxMin(a::A, n::Integer) where {T<:Number, A<:AbstractVector{T}}
-    MaxMin{T, T, A}(a, convert(Int, n))
-end
-function MaxMin(a::A, n::Integer) where
-    {T<:Number, S<:NTuple{2, T}, A<:AbstractVector{S}}
-    MaxMin{T, S, A}(a, convert(Int, n))
-end
-function MaxMin(a::A, n::Integer) where
-    {T<:Number, A<:AbstractArray{T, 2}}
-    MaxMin{T, T, A}(a, convert(Int, n))
+
 end
 
-length(a::MaxMin) = a.len
-
-size(a::MaxMin) = (length(a),)
-binsize(a::MaxMin) = a.binsize
-
-function getindex(a::MaxMin, i::Integer)
-    (idx_start, idx_stop) = bin_bounds(i, a.binsize, a.input_len)
-    return extrema_red(view(a.input, idx_start:idx_stop))
+function MaxMin(a::W) where
+    {T<:Number, S<:NTuple{2, T}, W<:WindowedArray{<:Any,S,1,<:Any}}
+    MaxMin{T,W}(a)
 end
-function getindex(a::M, i::Integer) where
-    {T<: Number, A<:AbstractArray{T, 2}, M<:MaxMin{T, T, A}}
-    (idx_start, idx_stop) = bin_bounds(i, a.binsize, a.input_len)
-    return extrema_red(view(a.input, :, idx_start:idx_stop))
+function MaxMin(a::W) where
+    {T<:Number, W<:WindowedArray{<:Any,T,<:Any,<:Any}}
+    MaxMin{T,W}(a)
 end
 
-Base.IndexStyle(::Type{T}) where T<: MaxMin = IndexLinear()
+function MaxMin(input::AbstractArray{<:Number, 2}, binsize::Integer)
+    winput = WindowedArray(input, binsize, 2)
+    MaxMin(winput)
+end
+function MaxMin(input::AbstractVector, binsize::Integer)
+    winput = WindowedArray(input, binsize)
+    MaxMin(winput)
+end
 
+length(a::MaxMin) = length(a.winput)
+size(a::MaxMin) = size(a.winput)
+
+getindex(a::MaxMin, i::Integer) = extrema_red(a.winput[i])
 setindex!(::MaxMin, ::Integer) = throw(ReadOnlyMemoryError())
 
-function bin_bounds(a::MaxMin, ::Type{S} = Int) where {S}
-    bnds = Vector{NTuple{2,S}}(length(a))
-    bnds .= bin_bounds.(convert.(S, eachindex(a)), a.binsize, a.input_len)
-    return bnds
-end
+Base.IndexStyle(::Type{M}) where {W,M<:MaxMin{<:Any,W}} = IndexStyle(W)
 
-function bin_bounds(i::Integer, a::MaxMin)
-    bin_bounds(i, a.binsize, a.input_len)
-end
+binsize(a::MaxMin) = binsize(a.winput)
+bin_bounds(a::MaxMin, args...) = bin_bounds(a.winput, args...)
+bin_bounds(i::Integer, a::MaxMin) = bin_bounds(i, a.winput)
