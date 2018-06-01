@@ -1,4 +1,13 @@
 """
+Must implement
+array interface
+binsize
+bin_bounds
+downsamp_reduce
+"""
+abstract type Downsampler{T, N} <: AbstractArray{T, N} end
+
+"""
 Must implement:
 downsamp_req
 extrema
@@ -29,7 +38,7 @@ function downsamp_range_check(
     in_range = i_begin <= nin && i_end >= 1
     i_begin_clipped = clip_ndx(i_begin, nin)
     i_end_clipped = clip_ndx(i_end, nin)
-    return (in_range, i_begin_clipped, i_end_clipped)
+    return (in_range, i_begin_clipped::T, i_end_clipped::T)
 end
 
 duration(a::DynamicDownsampler) = baselength(a) / fs(a)

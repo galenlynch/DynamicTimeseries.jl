@@ -41,17 +41,17 @@ export
     write_cache_file
 
 include("util.jl")
+include("dynamic_downsampler.jl")
 include("windower.jl")
+include("dynamic_windower.jl")
 include("maxmin.jl")
 include("averager.jl")
-include("dynamic_downsampler.jl")
 include("extrema_ds.jl")
-include("dynamic_windower.jl")
-include("mapped_ts.jl")
 include("dynamic_ts.jl")
-include("caching_ts.jl")
-include("caching.jl")
 include("averaging_ds.jl")
 include("spectrogram.jl")
+include("mapped_ts.jl")
+include("caching_ts.jl")
+include("caching.jl")
 
 end # module

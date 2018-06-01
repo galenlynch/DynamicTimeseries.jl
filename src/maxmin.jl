@@ -1,5 +1,3 @@
-abstract type Downsampler{T, N} <: AbstractArray{T, N} end
-
 struct MaxMin{T<:Number, W<:WindowedArray} <: Downsampler{Tuple{T, T}, 1}
     winput::W
 
@@ -52,3 +50,21 @@ Base.IndexStyle(::Type{M}) where {W,M<:MaxMin{<:Any,W}} = IndexStyle(W)
 binsize(a::MaxMin) = binsize(a.winput)
 bin_bounds(a::MaxMin, args...) = bin_bounds(a.winput, args...)
 bin_bounds(i::Integer, a::MaxMin) = bin_bounds(i, a.winput)
+
+function downsamp_reduce(
+    ::Type{D}, ds::AbstractArray{E, 2}
+) where {E<:Number, D<:MaxMin}
+    extrema_red(ds)
+end
+
+function downsamp_reduce(
+    ::Type{D}, ds::AbstractVector{NTuple{2, E}}
+) where {E<:Number, D<:MaxMin}
+    extrema_red(ds)
+end
+
+function downsamp_reduce(
+    ::Type{D}, ds::AbstractArray, ::AbstractVector
+) where D<:Downsampler
+    return (downsamp_reduce(D, ds), 0)
+end
