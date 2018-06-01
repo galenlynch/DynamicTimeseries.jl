@@ -73,10 +73,15 @@ start_time(d::DynamicWindower) = d.offset
     center of the last time bin is around xe.
     """
 function downsamp_req(
-    ds::DynamicWindower{E,<:Any,N,<:Any}, xb, xe, npt::S
-) where {S<:Integer,E,N}
+    ds::DynamicWindower, xb, xe, npt::Integer
+)
     win_l, overlap, ib_ex, ie_ex = downsamp_req_window_info(ds, xb, xe, npt)
+    make_windowedarray(ds, win_l, overlap, ib_ex, ie_ex)
+end
 
+function make_windowedarray(
+    ds::DynamicWindower{<:Any,<:Any,N,<:Any}, win_l, overlap, ib_ex, ie_ex
+) where {N}
     slice_idx = make_slice_idx(N, ds.dim, ib_ex:ie_ex)
     v = view(ds.input, slice_idx...)
     wa = WindowedArray(v, win_l, ds.dim, overlap)
@@ -90,8 +95,8 @@ function downsamp_req(
 end
 
 function downsamp_req_window_info(
-    ds::DynamicWindower{E,<:Any,N,<:Any}, xb, xe, npt::S
-) where {S<:Integer,E,N}
+    ds::DynamicWindower, xb, xe, npt::S
+) where S
     (in_range, ib, ie) = downsamp_range_check(ds, xb, xe, S)
     nsel = n_ndx(ib, ie)
     if ! in_range || npt <= 0 || nsel == 0
