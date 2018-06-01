@@ -14,6 +14,7 @@ export
     # Types
     WindowedArray,
     DynamicWindower,
+    CacheAccessor,
     CachingDynamicTs,
     Downsampler,
     DynamicDownsampler,
@@ -51,6 +52,7 @@ include("dynamic_ts.jl")
 include("averaging_ds.jl")
 include("spectrogram.jl")
 include("mapped_ts.jl")
+include("cache_accessor.jl")
 include("caching_ts.jl")
 include("caching.jl")
 

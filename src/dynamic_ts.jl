@@ -1,4 +1,4 @@
-struct DynamicTs{S<:Number, W<:DynamicWindower{<:Any,S,1,<:Any}} <: ExtremaDownsampler{S}
+struct DynamicTs{S<:Number, W<:DynamicWindower{<:Any,S,1,<:Any}} <: ExtremaDynDownsampler{S}
     winput::W
 end
 

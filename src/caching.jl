@@ -9,7 +9,7 @@ function write_cache_file(
     input::AbstractArray,
     autoclean::Bool = true,
     basename::AbstractString = tempname()
-) where {T<:ExtremaDownsampler}
+) where {T<:ExtremaDynDownsampler}
     (cachelength, cachedata) = prepare_cachefile(T, input, basename)
     path = string(basename, '_', cachelength)
     io = open(path, "w+")
@@ -83,7 +83,7 @@ function open_cache_files(
     paths::Vector{String},
     lengths::AbstractArray{<:Integer},
     autoclean::Bool = true
-) where {D<:ExtremaDownsampler}
+) where {D<:ExtremaDynDownsampler}
     ndecade = length(paths)
     cachearr = new_cache_arrs(D, ndecade)
     try
@@ -105,7 +105,7 @@ end
 
 function open_cache_files(
     ::Type{D}, cachedir::AbstractString, fid::Integer
-) where {T, D<:ExtremaDownsampler{T}}
+) where {T, D<:ExtremaDynDownsampler{T}}
     (fpaths, lengths) = parse_cache_filenames(cachedir, fid, T, 2)
     return open_cache_files(D, fpaths, lengths, false)
 end

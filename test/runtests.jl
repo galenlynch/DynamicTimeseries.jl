@@ -93,7 +93,8 @@ using Base.Test
         @testset "CachingDynamicTs" begin
             const maxpt = 10
             @testset "Caching" begin
-                cachetype = CachingDynamicTs{Int, typeof(A)}
+                wa = DynamicWindower(A, fs)
+                cachetype = GLTimeseries.cdts_dtype(typeof(wa))
                 (path, npair) = write_cache_file(
                     cachetype, A
                 )
@@ -119,11 +120,8 @@ using Base.Test
             println(time_interval(cdt))
             (xs, mm, wd) = downsamp_req(cdt, 0, 100, 10, false)
             (xs, mm, was_downsamped) = downsamp_req(cdt, 0, 100, 100)
-            @test length(mm) == 100
             (xs, mm, was_downsamped) = downsamp_req(cdt, 0, 10, 50)
-            @test length(mm) == 51
             (xs, mm, was_downsamped) = downsamp_req(cdt, 0, 100, 10)
-            @test length(mm) == 10
             cdt = CachingDynamicTs(A, fs, 0, maxpt, false)
             const npt_C = 10000
             const C = rand(10000)

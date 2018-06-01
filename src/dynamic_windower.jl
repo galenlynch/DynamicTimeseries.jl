@@ -60,6 +60,10 @@ function validate_dynamic_windower_args(
     end
 end
 
+function windowtype(::Type{W}) where {E,T,N,A,W<:DynamicWindower{E,T,N,A}}
+    WindowedArray{E,T,N,A}
+end
+
 fs(d::DynamicWindower) = d.fs
 baselength(d::DynamicWindower) = length(d.input)
 basedata(d::DynamicWindower) = d.input
@@ -94,9 +98,7 @@ function make_windowedarray(
     return times, wa, was_downsampled
 end
 
-function downsamp_req_window_info(
-    ds::DynamicWindower, xb, xe, npt::S
-) where S
+function downsamp_req_window_info(ds::DynamicWindower, xb, xe, npt::S) where S
     (in_range, ib, ie) = downsamp_range_check(ds, xb, xe, S)
     nsel = n_ndx(ib, ie)
     if ! in_range || npt <= 0 || nsel == 0
@@ -108,11 +110,11 @@ function downsamp_req_window_info(
     else
         nin = S(baselength(ds))
         win_l_target = size_windows_expanded(
-            npt, nsel, nin, ds.f_overlap, ds.wmin
-        )
+            npt, nsel, nin, ds.f_overlap, S(ds.wmin)
+        )::S
 
         if win_l_target > nsel
-            win_l = nsel
+            win_l = nsel::S
             npt_adj = one(S)
         else
             win_l = win_l_target
@@ -141,21 +143,21 @@ function downsamp_req_window_info(
             # where w is the number of windows
             npt_out = ceil(
                 S,
-                (ie - ib_ex + win_l - (win_l - 1) / 2) / (win_l - overlap)
-            )
+                (ie - ib_ex + win_l - (win_l - one(S)) / S(2)) / (win_l - overlap)
+            )::S
 
             # Finally calculate the last bound, p
             # p = s + w*l - (w - 1)*d - 1
             ie_ex = min(
                 nin,
                 ib_ex + npt_out * win_l - (npt_out - one(S)) * overlap - one(S)
-            )
+            )::S
         else
             ib_ex = ib
             ie_ex = ie
         end
     end
-    return win_l, overlap, ib_ex, ie_ex
+    return win_l::S, overlap::S, ib_ex::S, ie_ex::S
 end
 
 function size_windows_expanded(
@@ -166,7 +168,7 @@ function size_windows_expanded(
     win_l_min::T = one(T)
 ) where T<:Integer
     n_win_max == 1 && return n_point
-    n_overlap = floor(Int, overlap_frac * win_l_min)
+    n_overlap = floor(T, overlap_frac * win_l_min)
     if n_overlap == win_l_min
         throw(ArgumentException("Overlap must be smaller than window"))
     end
@@ -183,7 +185,7 @@ function size_windows_expanded(
     n_win = div(
         n_point + win_l_min - n_overlap,
         win_l_min - n_overlap
-    )
+    )::T
 
     if n_win > n_win_max
         # Too many windows: increase their size
@@ -193,13 +195,13 @@ function size_windows_expanded(
         # l = N / (w - f * (w - 1) - 1)
         win_l = cld(
             n_point,
-            n_win_max - floor(T, overlap_frac * (n_win_max - 1)) - 1
+            n_win_max - floor(T, overlap_frac * (n_win_max - one(T))) - one(T)
         )
     else
         win_l = win_l_min
     end
     win_l_final = win_l > win_l_max ? win_l_max : win_l
-    return win_l_final
+    return win_l_final::T
 end
 
 function size_windows_expanded(
