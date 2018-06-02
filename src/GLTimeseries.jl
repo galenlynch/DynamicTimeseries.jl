@@ -17,13 +17,12 @@ export
     CacheAccessor,
     CachingDynamicTs,
     Downsampler,
+    AbstractDynamicDownsampler,
     DynamicDownsampler,
     DynamicSpectrogram,
-    DynamicTs,
     MappedDynamicDownsampler,
     MaxMin,
     Averager,
-    AveragingTs,
 
     # Functions
     cacheinfo,
@@ -42,14 +41,12 @@ export
     write_cache_file
 
 include("util.jl")
-include("dynamic_downsampler.jl")
 include("windower.jl")
+include("abstract_downsamplers.jl")
 include("dynamic_windower.jl")
+include("dynamic_downsampler.jl")
 include("maxmin.jl")
 include("averager.jl")
-include("extrema_ds.jl")
-include("dynamic_ts.jl")
-include("averaging_ds.jl")
 include("spectrogram.jl")
 include("mapped_ts.jl")
 include("cache_accessor.jl")

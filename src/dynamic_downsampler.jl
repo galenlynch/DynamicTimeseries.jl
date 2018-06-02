@@ -1,45 +1,31 @@
-"""
-Must implement
-array interface
-binsize
-bin_bounds
-downsamp_reduce
-"""
-abstract type Downsampler{T, N} <: AbstractArray{T, N} end
+struct DynamicDownsampler{
+    E,D<:Downsampler,W<:DynamicWindower
+} <: AbstractDynamicDownsampler{E}
+    downsampler::Type{D}
+    winput::W
+end
 
-"""
-Must implement:
-downsamp_req
-extrema
-fs
-baselength
-start_time
-"""
-abstract type DynamicDownsampler{E} end
+function DynamicDownsampler(
+    ::Type{D}, winput::W
+) where {D<:Downsampler, W<:DynamicWindower}
+    DynamicDownsampler{eltype_preview(D, W), D, W}(D, winput)
+end
 
-
+function DynamicDownsampler(
+    ::Type{D}, input::AbstractArray, args...
+) where {D<:Downsampler}
+    DynamicDownsampler(D, DynamicWindower(input, args...))
+end
 
 function downsamp_req(
-    ds::DynamicDownsampler, x_start, x_end, reqpoints::AbstractFloat, args...
-)
-    return downsamp_req(ds, x_start, x_end, floor(Int, reqpoints), args...)
+    dd::D, xb, xe, npt, args...
+) where {E,C,D<:DynamicDownsampler{E,C,<:Any}}
+    (xs, wa, wd) = downsamp_req(dd.winput, xb, xe, npt)
+    ds = C(wa)
+    ys = collect(ds)
+    return xs, ys::Vector{E}, wd
 end
 
-function downsamp_range_check(
-    dts::DynamicDownsampler, x_start::Real, x_end::Real, ::Type{T} = Int32
-) where {T<:Integer}
-    x_start <= x_end || throw(ArgumentError("x_start must be before x_end"))
-    nin = T(baselength(dts))
-    # Find bounding indices
-    d_fs = fs(dts)
-    d_ss = start_time(dts)
-    i_begin = t_to_ndx(x_start, d_fs, d_ss, T)
-    i_end = t_to_last_ndx(x_end, d_fs, d_ss, T)
-    in_range = i_begin <= nin && i_end >= 1
-    i_begin_clipped = clip_ndx(i_begin, nin)
-    i_end_clipped = clip_ndx(i_end, nin)
-    return (in_range, i_begin_clipped::T, i_end_clipped::T)
-end
-
-duration(a::DynamicDownsampler) = baselength(a) / fs(a)
-time_interval(a::DynamicDownsampler) = (start_time(a), start_time(a) + duration(a))
+baselength(a::DynamicDownsampler) = baslength(a.winput)
+start_time(a::DynamicDownsampler) = start_time(a.winput)
+fs(a::DynamicDownsampler) = fs(a.winput)

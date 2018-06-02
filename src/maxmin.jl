@@ -39,6 +39,12 @@ function MaxMin(input::AbstractVector, binsize::Integer)
     MaxMin(winput)
 end
 
+function eltype_preview(
+    ::Type{D}, ::Type{W}
+) where {D<:MaxMin, T,W<:DynamicWindower{<:Any,T,1,<:Any}}
+    Tuple{T,T}
+end
+
 length(a::MaxMin) = length(a.winput)
 size(a::MaxMin) = size(a.winput)
 

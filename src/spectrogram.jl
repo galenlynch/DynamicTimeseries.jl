@@ -1,6 +1,6 @@
 struct DynamicSpectrogram{
     T<:AbstractFloat, W<:DynamicWindower{<:Any,<:Number,1,<:Any}
-} <: AverageDownsampler{Tuple{Vector{Float64}, Array{T, 2}}}
+} <: AbstractDynamicDownsampler{Tuple{Vector{Float64}, Array{T, 2}}}
     winput::W
     window::Vector{Float64}
     function DynamicSpectrogram{T,W}(

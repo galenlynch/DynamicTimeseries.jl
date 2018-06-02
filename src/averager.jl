@@ -22,18 +22,30 @@ end
 length(a::Averager) = length(a.winput)
 size(a::Averager) = size(a.winput)
 
+function eltype_preview(
+    ::Type{D}, ::Type{W}
+) where {D<:Averager, T,N,W<:WindowedArray{<:Any,T,N,<:Any}}
+    S = div_type(T)
+    Array{S,N}
+end
+
+function eltype_preview(
+    ::Type{D}, ::Type{W}
+) where {D<:Averager, T,W<:DynamicWindower{<:Any,T,1,<:Any}}
+    div_type(T)
+end
 
 function getindex(
-    a::Averager{E,<:WindowedArray{<:Any,<:Any,1,<:Any}}, i::Integer
-) where E
+    a::Averager{E,<:Any}, i::Integer
+) where E<:AbstractFloat
     v = a.winput[i]
-    mean(v)
+    mean(v)::E
 end
 
 "Method meant for when N > 1 in WindowedArray"
-function getindex(a::Averager{E, <:WindowedArray}, i::Integer) where E
+function getindex(a::Averager{E, <:WindowedArray}, i::Integer) where E <: AbstractArray
     v = a.winput[i]
-    mean(v, a.winput.dim)
+    mean(v, a.winput.dim)::E
 end
 setindex!(::Averager, ::Integer) = throw(ReadOnlyMemoryError())
 

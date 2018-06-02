@@ -1,4 +1,4 @@
-struct MappedDynamicDownsampler{E, D<:DynamicDownsampler{E}} <: DynamicDownsampler{E}
+struct MappedDynamicDownsampler{E, D<:DynamicDownsampler{E}} <: AbstractDynamicDownsampler{E}
     downsampler::D
     fmap::Function
 end

@@ -1,4 +1,4 @@
-struct DynamicWindower{E,T,N,A<:AbstractArray{T,N}} <: DynamicDownsampler{E}
+struct DynamicWindower{E,T,N,A<:AbstractArray{T,N}} <: AbstractDynamicDownsampler{E}
     input::A
     fs::Float64
     offset::Float64
@@ -210,3 +210,4 @@ function size_windows_expanded(
     (nwm, np, wlmax, wlmin) = promote(nwm, np, wlmax, wlmin)
     size_windows_expanded(nwm, np, wlmax, of, wlmin)
 end
+
