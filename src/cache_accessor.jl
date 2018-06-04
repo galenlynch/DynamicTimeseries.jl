@@ -1,12 +1,14 @@
-struct CacheAccessor{W<:DynamicWindower, E, D<:Downsampler, S<:Number}
+struct CacheAccessor{
+    W<:DynamicWindower, E, D<:Downsampler, S<:Number
+} <: AbstractDynamicDownsampler{E}
     winput::W
     downsamptype::Type{D}
     cachearrays::Vector{Array{S,2}}
     cachepaths::Vector{String}
 
     function CacheAccessor{W,E,D,S}(
+        ::Type{D},
         winput::W,
-        downsamptype::Type{D},
         cachearrays::Vector{Array{S,2}},
         cachepaths::Vector{String}
     ) where {W<:DynamicWindower,E,D<:Downsampler,S<:Number}
@@ -16,18 +18,72 @@ struct CacheAccessor{W<:DynamicWindower, E, D<:Downsampler, S<:Number}
             length(basedata(winput)),
             2
         )
-        new(winput, downsamptype, cachearrays, cachepaths)
+        new(winput, D, cachearrays, cachepaths)
     end
 end
 
 function CacheAccessor(
-    winput::W,
-    ::Type{E},
     ::Type{D},
+    winput::W,
     cachearrays::Vector{Array{S, 2}},
-    cachepaths::Vector{String}
-) where {W<:DynamicWindower,E,D<:Downsampler,S<:Number}
-    CacheAccessor{W,E,D,S}(winput, D, cachearrays, cachepaths)
+    cachepaths::Vector{String},
+    ::Type{E} = eltype_preview(D, A)
+) where {
+    D<:Downsampler, E, A, W<:DynamicWindower{<:Any, <:Any, <:Any, A}, S<:Number
+}
+    CacheAccessor{W,E,D,S}(D, winput, cachearrays, cachepaths)
+end
+
+function CacheAccessor(
+    ::Type{D},
+    winput::DynamicWindower,
+    ::Type{E},
+    cachewidth::Integer,
+    cachelengths::AbstractVector{<:Integer},
+    cachepaths::AbstractVector{<:AbstractString},
+    autoclean::Bool = true;
+    checkfiles::Bool = true
+) where {D<:Downsampler, E<:Number}
+    if checkfiles
+        cachepaths, cachelengths = sort_cache_files(cachepaths, cachelengths)
+    end
+    cachearrays = open_cache_files(
+        E, cachewidth, cachelengths, cachepaths, autoclean
+    )
+    CacheAccessor(D, winput, cachearrays, cachepaths)
+end
+
+function CacheAccessor(
+    ::Type{D},
+    winput::DynamicWindower,
+    sizehint::Integer = 70,
+    autoclean::Bool = true
+) where {D<:Downsampler}
+    (cachepaths, E, cachelengths, cachewidth) = write_cache_files(
+        D, basedata(winput), sizehint, autoclean
+    )
+    CacheAccessor(
+        D, winput, E, cachewidth, cachelengths, cachepaths, false; checkfiles=false
+    )
+end
+
+function CacheAccessor(
+    ::Type{D},
+    input::A,
+    fs::Real,
+    args...;
+    offset::Real = 0,
+    dim::Integer = 1,
+    f_overlap::Real = 0,
+    wmin::Integer = 1,
+    kwargs...
+) where {D<:Downsampler, S<:Number, A<:AbstractVector{S}}
+    CacheAccessor(
+        D,
+        DynamicWindower(input, fs, offset, dim, f_overlap, wmin),
+        args...;
+        kwargs...
+    )
 end
 
 function downsamp_req(
@@ -204,6 +260,12 @@ function reduce_downsample_caches(
         weight = n_ndx(i_start, i_stop)
     end
     return out, weight
+end
+
+function write_cache_contents(io::IO, ds::Downsampler)
+    for downsampled in ds
+        write(io, downsampled...)
+    end
 end
 
 subselect_index(ndx, ndx_base) = ndx_base + ndx - 1

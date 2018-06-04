@@ -94,25 +94,24 @@ using Base.Test
             const maxpt = 10
             @testset "Caching" begin
                 wa = DynamicWindower(A, fs)
-                cachetype = GLTimeseries.cdts_dtype(typeof(wa))
                 (path, npair) = write_cache_file(
-                    cachetype, A
+                    MaxMin, A
                 )
                 (files, lengths) = write_cache_files(
-                    cachetype, A, 10
+                    MaxMin, A, 10
                 )
                 println(files)
                 println(lengths)
                 cachedir = tempdir()
                 (files, lengths) = write_cache_files(
-                    cachetype, A, 10, true;
+                    MaxMin, A, 10, true;
                     cachedir=cachedir, fid=1)
                 println(files)
                 println(lengths)
-                cachearr = open_cache_files(cachetype, cachedir, 1)
+                cachearr = open_cache_files(Int, cachedir, 1)
             end
 
-            cdt = CachingDynamicTs(A, fs, 0, maxpt)
+            cdt = CacheAccessor(MaxMin, A, fs, maxpt)
             (xs, mm, wd) = downsamp_req(cdt, 0, 0, 1)
             (xs, mm, wd) = downsamp_req(cdt, 0, 1, 0)
             (xs, mm, was_downsamped) = downsamp_req(cdt, 0, 1, 100)
@@ -122,11 +121,13 @@ using Base.Test
             (xs, mm, was_downsamped) = downsamp_req(cdt, 0, 100, 100)
             (xs, mm, was_downsamped) = downsamp_req(cdt, 0, 10, 50)
             (xs, mm, was_downsamped) = downsamp_req(cdt, 0, 100, 10)
-            cdt = CachingDynamicTs(A, fs, 0, maxpt, false)
+            cdt = CacheAccessor(MaxMin, A, fs, maxpt, false)
+            # cdt = CachingDynamicTs(A, fs, 0, maxpt, false)
             const npt_C = 10000
             const C = rand(10000)
             const fs_C = 100
-            const dts_C = CachingDynamicTs(C, fs_C)
+            const dts_C = CacheAccessor(MaxMin, C, fs_C)
+            # const dts_C = CachingDynamicTs(C, fs_C)
             const true_extrema = extrema(C)
             (xs, ys, _) = downsamp_req(dts_C, 0.0, 99.99, 74)
             @test GLTimeseries.extrema_red(ys) == true_extrema

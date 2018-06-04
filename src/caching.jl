@@ -1,7 +1,9 @@
 const GL_CACHEPREFIX = "GLTSCACHE"
 
 cache_reg(fid::Integer, ::Type{T}, n::Integer) where {T<:Number} = Regex(
-    string("^", GL_CACHEPREFIX, '_', fid, '_', T, '_', n, "_(\\d+)_(\\d+)\$")
+    string(
+        "^", GL_CACHEPREFIX, '_', fid, '_', T, '_', n, "_(\\d+)_(\\d+)_(\\d+)\$"
+    )
 )
 
 function write_cache_file(
@@ -9,12 +11,12 @@ function write_cache_file(
     input::AbstractArray,
     autoclean::Bool = true,
     basename::AbstractString = tempname()
-) where {T<:ExtremaDynDownsampler}
-    (cachelength, cachedata) = prepare_cachefile(T, input, basename)
-    path = string(basename, '_', cachelength)
+) where {T<:Downsampler}
+    (cachelength, cachewidth, E, cachedata) = prepare_cachefile(T, input, basename)
+    path = string(basename, '_', cachelength, '_', cachewidth)
     io = open(path, "w+")
     try
-        write_cache_contents(T, io, cachedata)
+        write_cache_contents(io, cachedata)
     catch
         close(io)
         rm(path)
@@ -22,7 +24,7 @@ function write_cache_file(
     end
     close(io)
     autoclean && atexit(() -> rm(path))
-    return (path, cachelength)
+    return (path, E, cachelength, cachewidth)
 end
 
 function write_cache_files(
@@ -32,19 +34,18 @@ function write_cache_files(
     autoclean::Bool = true;
     fid::Integer = -1,
     cachedir::AbstractString = tempdir()
-)where {D<:DynamicDownsampler, T<:Number, N, A<:AbstractArray{T, N}}
+)where {D<:Downsampler, T<:Number, N, A<:AbstractArray{T, N}}
     nsamp = length(input)
-    cachedims = cache_dims(D)
     if fid > 0
         if ! isdir(cachedir)
             throw(ArgumentError(
                 "cachedir ", cachedir, " is not a directory"
             ))
         end
-        basestr = string(GL_CACHEPREFIX, '_', fid, '_', T, '_', cachedims)
+        basestr = string(GL_CACHEPREFIX, '_', fid, '_', T, '_', 2) # 2 cache dims
         basename = joinpath(cachedir, basestr)
     else
-        basename = string(tempname(), '_', T, '_', cachedims)
+        basename = string(tempname(), '_', T, '_', 2) # 2 cache dimensions
     end
     if sizehint < nsamp
         # Preallocate
@@ -54,16 +55,20 @@ function write_cache_files(
 
         # Make first cache file
         dname = basename * "_1"
-        (cachepaths[1], lengths[1]) = write_cache_file(D, input, autoclean, dname)
-        cachearr = open_cache_file(D, lengths[1], cachepaths[1])
+        (cachepaths[1], E, lengths[1], width) = write_cache_file(
+            D, input, autoclean, dname
+        )
+        cachearr = open_cache_file(E, width, lengths[1], cachepaths[1])
         # Make subsequent cache files
         for dno = 2:ndecade
             dname = string(basename, '_', dno)
             try
-                (cachepaths[dno], lengths[dno]) = write_cache_file(
+                (cachepaths[dno], temp_el, lengths[dno], temp_width) = write_cache_file(
                     D, cachearr, autoclean, dname
                 )
-                cachearr = open_cache_file(D, lengths[dno], cachepaths[dno])
+                temp_el != E && throw(Error("Element types are not all the same"))
+                temp_width != width && throw(Error("Cache widths are not all the same"))
+                cachearr = open_cache_file(E, width, lengths[dno], cachepaths[dno])
             catch
                 for i = 1:(dno - 1)
                     rm(cachepaths[i])
@@ -75,20 +80,21 @@ function write_cache_files(
         cachepaths = Vector{String}()
         lengths = Vector{Int}()
     end
-    return (cachepaths, lengths)
+    return (cachepaths, E, lengths, width)
 end
 
 function open_cache_files(
-    ::Type{D},
-    paths::Vector{String},
+    ::Type{E},
+    width::Integer,
     lengths::AbstractArray{<:Integer},
+    paths::Vector{String},
     autoclean::Bool = true
-) where {D<:ExtremaDynDownsampler}
+) where {E<:Number}
     ndecade = length(paths)
-    cachearr = new_cache_arrs(D, ndecade)
+    cachearr = Vector{Array{E,2}}(ndecade)
     try
         for dno in 1:ndecade
-            cachearr[dno] = open_cache_file(D, lengths[dno], paths[dno])
+            cachearr[dno] = open_cache_file(E, width, lengths[dno], paths[dno])
             autoclean && atexit(() -> rm(paths[dno]))
         end
     catch
@@ -98,16 +104,27 @@ function open_cache_files(
     return cachearr
 end
 
-function cacheinfo(a::C) where {S<:Number, A, C<:CachingDynamicTs{S, A}}
+function open_cache_file(
+    ::Type{E}, rows::Integer, cols::Integer, path::AbstractString
+) where E<:Number
+    open(path, "r") do ior
+        Mmap.mmap(ior, Array{E, 2}, (rows, cols))
+    end
+end
+
+function cacheinfo(a::CacheAccessor{<:Any,<:Any,<:Any,S}) where {S<:Number}
     cachelengths = map((x) -> size(x, 2), a.cachearrays)
     return (S, a.cachepaths, cachelengths)
 end
 
 function open_cache_files(
-    ::Type{D}, cachedir::AbstractString, fid::Integer
-) where {T, D<:ExtremaDynDownsampler{T}}
-    (fpaths, lengths) = parse_cache_filenames(cachedir, fid, T, 2)
-    return open_cache_files(D, fpaths, lengths, false)
+    ::Type{T}, cachedir::AbstractString, fid::Integer
+) where {T<:Number}
+    (fpaths, lengths, widths) = parse_cache_filenames(cachedir, fid, T, 2)
+    if ! allsame(widths)
+        throw(ErrorException("Widths must be the same"))
+    end
+    return open_cache_files(T, widths[1], lengths, fpaths, false)
 end
 
 function parse_cache_filenames(
@@ -117,6 +134,7 @@ function parse_cache_filenames(
     nm = length(matches)
 
     lengths = Vector{Int}(nm)
+    widths = Vector{Int}(nm)
     fpaths = Vector{String}(nm)
     if nm > 0
         filenos = Vector{Int}(nm)
@@ -126,12 +144,14 @@ function parse_cache_filenames(
         filenos .= parse.(Int, scratch)
         map!((x) -> x[2], scratch, matches)
         lengths .= parse.(Int, scratch)
+        map!((x) -> x[3], scratch, matches)
+        widths .= parse.(Int, scratch)
         map!((x) -> x.match, scratch, matches)
         fpaths .= joinpath.(cachedir, scratch)
         fpaths = fpaths[filenos]
         lengths = lengths[filenos]
     end
-    return (fpaths, lengths)
+    return (fpaths, lengths, widths)
 end
 
 function validate_cache_arrays(
