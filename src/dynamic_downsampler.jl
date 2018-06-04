@@ -7,8 +7,8 @@ end
 
 function DynamicDownsampler(
     ::Type{D}, winput::W
-) where {D<:Downsampler, W<:DynamicWindower}
-    DynamicDownsampler{eltype_preview(D, W), D, W}(D, winput)
+) where {D<:Downsampler, A, W<:DynamicWindower{<:Any, <:Any, <:Any, A}}
+    DynamicDownsampler{eltype_preview(D, A), D, W}(D, winput)
 end
 
 function DynamicDownsampler(

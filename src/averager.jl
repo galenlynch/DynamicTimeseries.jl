@@ -23,15 +23,15 @@ length(a::Averager) = length(a.winput)
 size(a::Averager) = size(a.winput)
 
 function eltype_preview(
-    ::Type{D}, ::Type{W}
-) where {D<:Averager, T,N,W<:WindowedArray{<:Any,T,N,<:Any}}
+    ::Type{D}, ::Type{<:AbstractArray{T,N}}
+) where {D<:Averager, T<:Number, N}
     S = div_type(T)
     Array{S,N}
 end
 
 function eltype_preview(
-    ::Type{D}, ::Type{W}
-) where {D<:Averager, T,W<:DynamicWindower{<:Any,T,1,<:Any}}
+    ::Type{D}, ::Type{<:AbstractVector{T}}
+) where {D<:Averager, T<:Number}
     div_type(T)
 end
 

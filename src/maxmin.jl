@@ -40,8 +40,8 @@ function MaxMin(input::AbstractVector, binsize::Integer)
 end
 
 function eltype_preview(
-    ::Type{D}, ::Type{W}
-) where {D<:MaxMin, T,W<:DynamicWindower{<:Any,T,1,<:Any}}
+    ::Type{D}, ::Type{<:AbstractVector{T}}
+) where {D<:MaxMin, T<:Number}
     Tuple{T,T}
 end
 
