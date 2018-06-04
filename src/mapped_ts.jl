@@ -1,8 +1,10 @@
-struct MappedDynamicDownsampler{E, D<:DynamicDownsampler{E}} <: AbstractDynamicDownsampler{E}
+struct MappedDynamicDownsampler{E, D<:AbstractDynamicDownsampler{E}} <: AbstractDynamicDownsampler{E}
     downsampler::D
     fmap::Function
 end
-function MappedDynamicDownsampler(d::D, fmap::Function) where {E, D<:DynamicDownsampler{E}}
+function MappedDynamicDownsampler(
+    d::D, fmap::Function
+) where {E, D<:AbstractDynamicDownsampler{E}}
     return MappedDynamicDownsampler{E,D}(d, fmap)
 end
 
