@@ -2,18 +2,20 @@ const GL_CACHEPREFIX = "GLTSCACHE"
 
 cache_reg(fid::Integer, ::Type{T}, n::Integer) where {T<:Number} = Regex(
     string(
-        "^", GL_CACHEPREFIX, '_', fid, '_', T, '_', n, "_(\\d+)_(\\d+)_(\\d+)\$"
+        "^", GL_CACHEPREFIX, '_', fid, '_', T, '_', "_(\\d+)_([\\d_]+)\$"
     )
 )
 
 function write_cache_file(
-    ::Type{T},
-    input::AbstractArray,
+    ::Type{D},
+    input::AbstractArray{<:Any, N},
     autoclean::Bool = true,
-    basename::AbstractString = tempname()
-) where {T<:Downsampler}
-    (cachelength, cachewidth, E, cachedata) = prepare_cachefile(T, input, basename)
-    path = string(basename, '_', cachelength, '_', cachewidth)
+    basename::AbstractString = tempname(),
+    dim::Integer = N
+) where {N, D<:Downsampler}
+    (cachedims, E, cachedata) = prepare_cachefile(D, input, dim)
+    dim_str = join(string.(cachedims), '_')
+    path = string(basename, '_', dim_str)
     io = open(path, "w+")
     try
         write_cache_contents(io, cachedata)
@@ -24,14 +26,15 @@ function write_cache_file(
     end
     close(io)
     autoclean && atexit(() -> rm(path))
-    return (path, E, cachelength, cachewidth)
+    return (path, E, cachedims)
 end
 
 function write_cache_files(
     ::Type{D},
     input::A,
     sizehint::Integer,
-    autoclean::Bool = true;
+    autoclean::Bool = true,
+    dim::Integer = 1;
     fid::Integer = -1,
     cachedir::AbstractString = tempdir()
 )where {D<:Downsampler, T<:Number, N, A<:AbstractArray{T, N}}
@@ -42,33 +45,34 @@ function write_cache_files(
                 "cachedir ", cachedir, " is not a directory"
             ))
         end
-        basestr = string(GL_CACHEPREFIX, '_', fid, '_', T, '_', 2) # 2 cache dims
+        basestr = string(GL_CACHEPREFIX, '_', fid, '_', T, '_', N)
         basename = joinpath(cachedir, basestr)
     else
-        basename = string(tempname(), '_', T, '_', 2) # 2 cache dimensions
+        basename = string(tempname(), '_', T, '_', N)
     end
     if sizehint < nsamp
         # Preallocate
         ndecade = convert(Int, ceil(log10(nsamp / sizehint)))
         cachepaths = Vector{String}(ndecade)
-        lengths = Vector{Int}(ndecade)
 
         # Make first cache file
         dname = basename * "_1"
-        (cachepaths[1], E, lengths[1], width) = write_cache_file(
-            D, input, autoclean, dname
+        (cachepaths[1], E, cachedim) = write_cache_file(
+            D, input, autoclean, dname, dim
         )
-        cachearr = open_cache_file(E, width, lengths[1], cachepaths[1])
+        cachedims = Vector{typeof(cachedim)}(ndecade)
+        println("first cachedim is ", cachedim)
+        cachedims[1] = cachedim
+        cachearr = open_cache_file(E, cachedims[1], cachepaths[1])
         # Make subsequent cache files
         for dno = 2:ndecade
             dname = string(basename, '_', dno)
             try
-                (cachepaths[dno], temp_el, lengths[dno], temp_width) = write_cache_file(
+                (cachepaths[dno], temp_el, cachedims[dno]) = write_cache_file(
                     D, cachearr, autoclean, dname
                 )
-                temp_el != E && throw(Error("Element types are not all the same"))
-                temp_width != width && throw(Error("Cache widths are not all the same"))
-                cachearr = open_cache_file(E, width, lengths[dno], cachepaths[dno])
+                temp_el != E && error("Element types are not all the same")
+                cachearr = open_cache_file(E, cachedims[dno], cachepaths[dno])
             catch
                 for i = 1:(dno - 1)
                     rm(cachepaths[i])
@@ -80,21 +84,35 @@ function write_cache_files(
         cachepaths = Vector{String}()
         lengths = Vector{Int}()
     end
-    return (cachepaths, E, lengths, width)
+    return (cachepaths, E, cachedims)
+end
+
+function write_cache_files(
+    ::Type{D},
+    winput::DynamicWindower,
+    sizehint::Integer,
+    autoclean::Bool = true;
+    fid::Integer = -1,
+    cachedir::AbstractString = tempdir()
+) where D <: Downsampler
+    write_cache_files(
+        D, basedata(winput), sizehint, autoclean, winput.dim;
+        fid = fid, cachedir = cachedir
+    )
 end
 
 function open_cache_files(
     ::Type{E},
-    width::Integer,
-    lengths::AbstractArray{<:Integer},
-    paths::Vector{String},
+    dims::AbstractVector{<:NTuple{N, <:Integer}},
+    paths::AbstractVector{<:AbstractString},
     autoclean::Bool = true
-) where {E<:Number}
+) where {N, E<:Number}
     ndecade = length(paths)
-    cachearr = Vector{Array{E,2}}(ndecade)
+    length(dims) == ndecade || error("paths and dims must be same length")
+    cachearr = Vector{Array{E,N}}(ndecade)
     try
         for dno in 1:ndecade
-            cachearr[dno] = open_cache_file(E, width, lengths[dno], paths[dno])
+            cachearr[dno] = open_cache_file(E, dims[dno], paths[dno])
             autoclean && atexit(() -> rm(paths[dno]))
         end
     catch
@@ -104,27 +122,24 @@ function open_cache_files(
     return cachearr
 end
 
+function open_cache_files(
+    ::Type{T}, cachedir::AbstractString, fid::Integer
+) where {T<:Number}
+    (fpaths, dims) = parse_cache_filenames(cachedir, fid, T, 2)
+    return open_cache_files(T, dims, fpaths, false)
+end
+
 function open_cache_file(
-    ::Type{E}, rows::Integer, cols::Integer, path::AbstractString
-) where E<:Number
+    ::Type{E}, dims::NTuple{N, <:Integer}, path::AbstractString
+) where {N, E<:Number}
     open(path, "r") do ior
-        Mmap.mmap(ior, Array{E, 2}, (rows, cols))
+        Mmap.mmap(ior, Array{E, N}, dims)
     end
 end
 
 function cacheinfo(a::CacheAccessor{<:Any,<:Any,<:Any,S}) where {S<:Number}
-    cachelengths = map((x) -> size(x, 2), a.cachearrays)
-    return (S, a.cachepaths, cachelengths)
-end
-
-function open_cache_files(
-    ::Type{T}, cachedir::AbstractString, fid::Integer
-) where {T<:Number}
-    (fpaths, lengths, widths) = parse_cache_filenames(cachedir, fid, T, 2)
-    if ! allsame(widths)
-        throw(ErrorException("Widths must be the same"))
-    end
-    return open_cache_files(T, widths[1], lengths, fpaths, false)
+    cachedims = map(size, a.cachearrays)
+    return (S, a.cachepaths, cachedims)
 end
 
 function parse_cache_filenames(
@@ -133,44 +148,44 @@ function parse_cache_filenames(
     matches = dir_match_files(cache_reg(fid, T, n), cachedir)
     nm = length(matches)
 
-    lengths = Vector{Int}(nm)
-    widths = Vector{Int}(nm)
+    dims = Vector{NTuple{n, Int}}(nm)
+    dim_scratch = Vector{Int}(n)
     fpaths = Vector{String}(nm)
     if nm > 0
         filenos = Vector{Int}(nm)
-        scratch = Vector{String}(nm)
-
-        map!((x) -> x[1], scratch, matches)
-        filenos .= parse.(Int, scratch)
-        map!((x) -> x[2], scratch, matches)
-        lengths .= parse.(Int, scratch)
-        map!((x) -> x[3], scratch, matches)
-        widths .= parse.(Int, scratch)
-        map!((x) -> x.match, scratch, matches)
-        fpaths .= joinpath.(cachedir, scratch)
-        fpaths = fpaths[filenos]
-        lengths = lengths[filenos]
+        for (i, m) in enumerate(matches)
+            filenos[i] = parse(Int, m[1])
+            dim_strs = split(m[2], '_')
+            length(dim_strs) == n || error("Did not find the correct number of dims")
+            for j in 1:n
+                dim_scratch[j] = parse(Int, dim_strs[j])
+            end
+            dims[i] = (dim_scratch...)
+            fpaths[i] = joinpath(cachedir, m.match)
+        end
+        p = sortperm(filenos)
+        fpaths = fpaths[p]
+        dims = dims[p]
     end
-    return (fpaths, lengths, widths)
+    return (fpaths, dims)
 end
 
 function validate_cache_arrays(
     cachepaths::AbstractVector{<:AbstractString},
-    cachearrays::AbstractVector{<:AbstractArray},
+    cachearrays::AbstractVector{<:AbstractArray{<:Any, N}},
     baselength::Integer,
-    dim::Integer = 1,
+    dim::Integer = N,
     dec_factor::Integer = 10
-)
+) where N
     ncache = length(cachepaths)
     if ncache != length(cachearrays)
             throw(ArgumentError(
                 "cachearrays and cachepaths must be the same length"
                 ))
     end
-    lens = Vector{Int}(ncache)
-    lens .= size.(cachearrays, dim)
     last_len = baselength
-    for l in lens
+    for carr in cachearrays
+        l = size(carr, dim)
         if cld(last_len, l) != dec_factor
             throw(ArgumentError(
                 "Cache arrays are not decreasing in size by a factor of $dec_factor"
@@ -182,10 +197,12 @@ end
 
 function sort_cache_files(
     cachepaths::AbstractArray{<:AbstractString},
-    cachelengths::AbstractArray{<:Integer},
-)
+    cachedims::AbstractArray{N, <:Integer},
+    dim::Integer
+) where {N}
+    cachlengths = size.(cachedims, dim)
     p = sortperm(cachelengths; rev=true)
-    sorted_cachelengths = cachelengths[p]
+    sorted_cachedims = cachedims[p]
     sorted_cachepaths = cachepaths[p]
-    return sorted_cachepaths, sorted_cachelengths
+    return sorted_cachepaths, sorted_cachedims
 end

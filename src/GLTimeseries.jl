@@ -50,7 +50,8 @@ include("averager.jl")
 include("spectrogram.jl")
 include("mapped_ts.jl")
 include("cache_accessor.jl")
-include("caching_ts.jl")
 include("caching.jl")
+include("caching_ts.jl")
+include("caching_averager.jl")
 
 end # module

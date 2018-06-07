@@ -111,27 +111,43 @@ using Base.Test
                 cachearr = open_cache_files(Int, cachedir, 1)
             end
 
-            cdt = CacheAccessor(MaxMin, A, fs, maxpt)
-            (xs, mm, wd) = downsamp_req(cdt, 0, 0, 1)
-            (xs, mm, wd) = downsamp_req(cdt, 0, 1, 0)
-            (xs, mm, was_downsamped) = downsamp_req(cdt, 0, 1, 100)
-            @test length(mm) == 11
-            println(time_interval(cdt))
-            (xs, mm, wd) = downsamp_req(cdt, 0, 100, 10, false)
-            (xs, mm, was_downsamped) = downsamp_req(cdt, 0, 100, 100)
-            (xs, mm, was_downsamped) = downsamp_req(cdt, 0, 10, 50)
-            (xs, mm, was_downsamped) = downsamp_req(cdt, 0, 100, 10)
-            cdt = CacheAccessor(MaxMin, A, fs, maxpt, false)
-            # cdt = CachingDynamicTs(A, fs, 0, maxpt, false)
-            const npt_C = 10000
-            const C = rand(10000)
-            const fs_C = 100
-            const dts_C = CacheAccessor(MaxMin, C, fs_C)
-            # const dts_C = CachingDynamicTs(C, fs_C)
-            const true_extrema = extrema(C)
-            (xs, ys, _) = downsamp_req(dts_C, 0.0, 99.99, 74)
-            @test GLTimeseries.extrema_red(ys) == true_extrema
+            @testset "CacheAccessor" begin
+
+                @testset "MaxMin" begin
+                    cdt = CacheAccessor(MaxMin, A, fs, maxpt)
+                    (xs, mm, wd) = downsamp_req(cdt, 0, 0, 1)
+                    (xs, mm, wd) = downsamp_req(cdt, 0, 1, 0)
+                    (xs, mm, was_downsamped) = downsamp_req(cdt, 0, 1, 100)
+                    @test length(mm) == 11
+                    println(time_interval(cdt))
+                    (xs, mm, wd) = downsamp_req(cdt, 0, 100, 10, false)
+                    (xs, mm, was_downsamped) = downsamp_req(cdt, 0, 100, 100)
+                    (xs, mm, was_downsamped) = downsamp_req(cdt, 0, 10, 50)
+                    (xs, mm, was_downsamped) = downsamp_req(cdt, 0, 100, 10)
+                    cdt = CacheAccessor(MaxMin, A, fs, maxpt, false)
+                    # cdt = CachingDynamicTs(A, fs, 0, maxpt, false)
+                    const npt_C = 10000
+                    const C = rand(10000)
+                    const fs_C = 100
+                    const dts_C = CacheAccessor(MaxMin, C, fs_C)
+                    # const dts_C = CachingDynamicTs(C, fs_C)
+                    const true_extrema = extrema(C)
+                    (xs, ys, _) = downsamp_req(dts_C, 0.0, 99.99, 74)
+                    @test GLTimeseries.extrema_red(ys) == true_extrema
+                end
+
+                @testset "Averager" begin
+                    println("size of A is ", size(A))
+                    cda = CacheAccessor(Averager, A, fs, maxpt)
+                    (xs, av, wd) = downsamp_req(cda, 0, 0, 1)
+                    (xs, av, wd) = downsamp_req(cda, 0, 1, 0)
+                    (xs, av, wd) = downsamp_req(cda, 0, 10, 5)
+                end
+
+            end
+
             @testset "MappedDynamicDownsampler" begin
+                cdt = CacheAccessor(MaxMin, A, fs, maxpt)
                 c = 5
                 mds = MappedDynamicDownsampler(cdt, make_shifter(c))
                 (xs, ys) = downsamp_req(mds, 0, 100, 10)
@@ -141,7 +157,7 @@ using Base.Test
                 println(ys)
             end
         end
-    end
+end
 
     @testset "spectrogram" begin
         const ds = DynamicSpectrogram(A, fs, 0)

@@ -18,7 +18,6 @@ struct MaxMin{T<:Number, W<:WindowedArray} <: Downsampler{Tuple{T, T}, 1}
         end
         new(winput)
     end
-
 end
 
 function MaxMin(a::W) where
@@ -39,6 +38,12 @@ function MaxMin(input::AbstractVector, binsize::Integer)
     MaxMin(winput)
 end
 
+function concrete_type(
+    ::Type{D}, ::Type{W}, args...
+) where {D<:MaxMin, T, W<:WindowedArray{<:Any, T, <:Any, <:Any}}
+    return MaxMin{T, W}
+end
+
 function eltype_preview(
     ::Type{D}, ::Type{<:AbstractVector{T}}
 ) where {D<:MaxMin, T<:Number}
@@ -57,20 +62,18 @@ binsize(a::MaxMin) = binsize(a.winput)
 bin_bounds(a::MaxMin, args...) = bin_bounds(a.winput, args...)
 bin_bounds(i::Integer, a::MaxMin) = bin_bounds(i, a.winput)
 
+downsamp_reduce(::Type{<:MaxMin}, ds::AbstractArray{<:Number, 2}) = extrema_red(ds)
+
 function downsamp_reduce(
-    ::Type{D}, ds::AbstractArray{E, 2}
-) where {E<:Number, D<:MaxMin}
+    ::Type{<:MaxMin}, ds::AbstractVector{<:NTuple{2, <:Number}}
+)
     extrema_red(ds)
 end
 
-function downsamp_reduce(
-    ::Type{D}, ds::AbstractVector{NTuple{2, E}}
-) where {E<:Number, D<:MaxMin}
-    extrema_red(ds)
-end
+downsamp_reduce(::Type{<:MaxMin}, ds::AbstractVector{<:Number}) = extrema_red(ds)
 
 function downsamp_reduce(
-    ::Type{D}, ds::AbstractArray, ::AbstractVector
-) where D<:Downsampler
+    ::Type{D}, ds::AbstractArray, ::AbstractVector, ::Integer = 0
+) where D<:MaxMin
     return (downsamp_reduce(D, ds), 0)
 end

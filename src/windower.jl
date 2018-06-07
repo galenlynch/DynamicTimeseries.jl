@@ -44,16 +44,23 @@ function validate_windower_args(
     input_dims::NTuple{N,<:Integer}, dim::Integer, binsize::Integer, overlap::Integer
 ) where N
     if dim < 1 || dim > N
-        throw(ArgumentError("dimension does not match input"))
+        throw(ArgumentError(string(
+            "dim is ", dim,
+            " but it must be between 1 and the dimension of the input, ", N
+        )))
     end
     input_len  = input_dims[dim]
     if binsize < 1 || (input_len > 0 && binsize > input_len)
-        throw(ArgumentError("binsize must be between 1 and input length"))
+        throw(ArgumentError(string(
+            "binsize is ", binsize,
+            " but it must be between 1 and the input length, ", input_len
+        )))
     end
     if overlap < 0 || overlap >= binsize
-        throw(ArgumentError(
-            "overlap ($overlap) must be between 0 and binsize ($binsize)"
-        ))
+        throw(ArgumentError(string(
+            "overlap is ", overlap,
+            " but it must be between 0 and binsize, ", binsize
+        )))
     end
 end
 

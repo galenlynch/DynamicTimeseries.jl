@@ -1,54 +1,58 @@
 struct CacheAccessor{
-    W<:DynamicWindower, E, D<:Downsampler, S<:Number
+    W<:DynamicWindower, E, D<:Downsampler, S<:Number, N
 } <: AbstractDynamicDownsampler{E}
     winput::W
-    downsamptype::Type{D}
-    cachearrays::Vector{Array{S,2}}
+    cachearrays::Vector{Array{S,N}}
     cachepaths::Vector{String}
 
-    function CacheAccessor{W,E,D,S}(
-        ::Type{D},
+    function CacheAccessor{W,E,D,S,N}(
         winput::W,
-        cachearrays::Vector{Array{S,2}},
+        cachearrays::Vector{Array{S,N}},
         cachepaths::Vector{String}
-    ) where {W<:DynamicWindower,E,D<:Downsampler,S<:Number}
+    ) where {W<:DynamicWindower,E,D<:Downsampler,S<:Number,N}
         validate_cache_arrays(
             cachepaths,
             cachearrays,
-            length(basedata(winput)),
-            2
+            length(basedata(winput))
         )
-        new(winput, D, cachearrays, cachepaths)
+        new(winput, cachearrays, cachepaths)
     end
 end
 
 function CacheAccessor(
     ::Type{D},
     winput::W,
-    cachearrays::Vector{Array{S, 2}},
+    cachearrays::Vector{Array{S, N}},
     cachepaths::Vector{String},
     ::Type{E} = eltype_preview(D, A)
 ) where {
-    D<:Downsampler, E, A, W<:DynamicWindower{<:Any, <:Any, <:Any, A}, S<:Number
+    D<:Downsampler,
+    E,
+    A,
+    W<:DynamicWindower{<:Any, <:Any, <:Any, A},
+    S<:Number,
+    N
 }
-    CacheAccessor{W,E,D,S}(D, winput, cachearrays, cachepaths)
+    CacheAccessor{W,E,D,S,N}(winput, cachearrays, cachepaths)
 end
 
 function CacheAccessor(
     ::Type{D},
     winput::DynamicWindower,
     ::Type{E},
-    cachewidth::Integer,
-    cachelengths::AbstractVector{<:Integer},
+    cachedims::AbstractVector{<:NTuple{N, <:Integer}},
     cachepaths::AbstractVector{<:AbstractString},
-    autoclean::Bool = true;
+    autoclean::Bool = true,
+    dim::Integer = N;
     checkfiles::Bool = true
-) where {D<:Downsampler, E<:Number}
+) where {N, D<:Downsampler, E<:Number}
     if checkfiles
-        cachepaths, cachelengths = sort_cache_files(cachepaths, cachelengths)
+        cachepaths, cachedims = sort_cache_files(
+            cachepaths, cachedims, dim
+        )
     end
     cachearrays = open_cache_files(
-        E, cachewidth, cachelengths, cachepaths, autoclean
+        E, cachedims, cachepaths, autoclean
     )
     CacheAccessor(D, winput, cachearrays, cachepaths)
 end
@@ -59,11 +63,11 @@ function CacheAccessor(
     sizehint::Integer = 70,
     autoclean::Bool = true
 ) where {D<:Downsampler}
-    (cachepaths, E, cachelengths, cachewidth) = write_cache_files(
-        D, basedata(winput), sizehint, autoclean
+    (cachepaths, E, cachedims) = write_cache_files(
+        D, basedata(winput), sizehint, autoclean, winput.dim
     )
     CacheAccessor(
-        D, winput, E, cachewidth, cachelengths, cachepaths, false; checkfiles=false
+        D, winput, E, cachedims, cachepaths, false; checkfiles=false
     )
 end
 
@@ -119,7 +123,7 @@ function downsamp_req(
         times, wa, was_downsampled = make_windowedarray(
             dts.winput, binsize, overlap, i_begin, i_end
         )
-        downsampler = dts.downsamptype(wa)
+        downsampler = D(wa)
         ys = collect(downsampler)
     end
     return (times, ys, was_downsampled)
@@ -130,21 +134,21 @@ fs(ca::CacheAccessor) = fs(ca.winput)
 baselength(ca::CacheAccessor) = baselength(ca.winput)
 
 function approximate_downsample(
-    dts::CacheAccessor,
+    dts::CacheAccessor{<:Any, <:Any, D, <:Any, N},
     binsize::T,
     i_begin::T,
     i_end::T,
     decno::T
-) where {T<:Integer}
+) where {T<:Integer, D, N}
     di_begin = ndx_to_dec_ndx(i_begin, decno)
     di_end = ndx_to_dec_ndx(i_end, decno)
     nsubsamp = n_ndx(di_begin, di_end)
 
-    cache_slice = view(dts.cachearrays[decno], :, di_begin:di_end)
+    slice_idx = make_slice_idx(N, N, di_begin:di_end)
+    cache_slice = view(dts.cachearrays[decno], slice_idx...)
 
     dec_binsize = fld(binsize, T(10) ^ decno)
-
-    wa = WindowedArray(cache_slice, dec_binsize, 2)
+    wa = WindowedArray(cache_slice, dec_binsize, N)
 
     bbounds = bin_bounds(wa, T)
     for (i, bpair) in enumerate(bbounds)
@@ -153,12 +157,12 @@ function approximate_downsample(
     bcenters = bin_center(bbounds)
     xs = ndx_to_t(bcenters, fs(dts.winput), start_time(dts.winput))
 
-    ys = collect(dts.downsamptype(wa))
+    ys = collect(D(wa))
     return (xs, ys)
 end
 
 function exact_downsample(
-    dts::CacheAccessor{<:Any,E,<:Any,<:Any},
+    dts::CacheAccessor{<:Any,E,<:Any,<:Any,<:Any},
      nbase::Integer,
      binsize::Integer,
      i_begin::Integer,
@@ -181,8 +185,10 @@ end
 
 "Recursively find downsampled values using cached arrays"
 function reduce_downsample_caches(
-    dts::CacheAccessor{<:Any,E,D,<:Any}, i_start::Integer, i_stop::Integer
-) where {E, D<:Downsampler}
+    dts::CacheAccessor{W,E,D,<:Any,N},
+    i_start::Integer,
+    i_stop::Integer
+) where {M, W<:DynamicWindower{<:Any,<:Any,M,<:Any}, E, D<:Downsampler, N}
     # In order to find the downsampled value that you would get without taking
     # advantage of the cached downsampled values, we can combine cached values
     # together and traverse the caches (as well as the input data) to get the
@@ -190,30 +196,31 @@ function reduce_downsample_caches(
 
     nbase = n_ndx(i_start, i_stop)
     decno = min(floor(Int, log10(nbase)), length(dts.cachearrays))
+    D_concrete = concrete_type(D, windowtype(W))
     if decno > 0
         cached_ds = Vector{E}(3) # storage for left, right, and center
         weights = Vector{Int}(3)
         n_input = length(basedata(dts.winput)) # number of original samples
 
+
         # Find the indices of cached values that are completely contained
         # in this slice
         contained_first = dec_ndx_greater(i_start, decno)
         if n_input == i_stop # last index
-            contained_last = size(dts.cachearrays[decno], 2)
+            contained_last = size(dts.cachearrays[decno], N)
         else
             contained_last = dec_ndx_lesser(i_stop, decno)
         end
 
-        contained_view = view(
-            dts.cachearrays[decno], :, contained_first:contained_last
-        )
+        slice_idx = make_slice_idx(N, N, contained_first:contained_last)
+        contained_view = view(dts.cachearrays[decno], slice_idx...)
 
         # Reduce contained cache values
-        if size(contained_view, 2) > 0 # if the view is not empty
+        if size(contained_view, N) > 0 # if the view is not empty
             # Reduce downsampled values from this cache level
-            reduce_weights = fill(10 ^ decno, size(contained_view, 2))
+            reduce_weights = fill(10 ^ decno, size(contained_view, N))
             cached_ds[1], weights[1] = downsamp_reduce(
-                D, contained_view, reduce_weights
+                D_concrete, contained_view, reduce_weights
             )
             extrema_i = 2 # advance cached_ds index
             remainder_left_stop = dec_ndx_2_base_start(contained_first, decno) - 1
@@ -254,10 +261,12 @@ function reduce_downsample_caches(
             pop!(weights)
         end
 
-        out, weight = downsamp_reduce(D, cached_ds, weights)
+        out, weight = downsamp_reduce(D_concrete, cached_ds, weights)
     else # We're at the base level
-        out = extrema_red(view(basedata(dts.winput), i_start:i_stop))
-        weight = n_ndx(i_start, i_stop)
+        slice_idx = make_slice_idx(M, dts.winput.dim, i_start:i_stop)
+        baseview = view(basedata(dts.winput), slice_idx...)
+        reduce_weights = fill(1, size(baseview, dts.winput.dim))
+        out, weight = downsamp_reduce(D_concrete, baseview, reduce_weights, dts.winput.dim)
     end
     return out, weight
 end
