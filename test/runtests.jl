@@ -69,6 +69,23 @@ using Base.Test
             @test avg_int[1] == mean(A[1:10])
         end
 
+        @testset "stft" begin
+            s = Stft(B, 100, 1)
+            s[1]
+            out = make_out(s)
+            getindex!(out, s, 1)
+            sp = StftPsd(B, 100, 1)
+            sp[1]
+            out = make_out(sp)
+            getindex!(out, sp, 1)
+        end
+
+        @testset "averaging stft" begin
+            s = StftPsd(B, 100, 1)
+            a = Averager(s, 2)
+            a[1]
+        end
+
         @testset "DynamicWindower" begin
             dw = DynamicWindower(B, fs)
             (xs, ys, wd) = downsamp_req(dw, 0, 10, 2)
@@ -142,6 +159,13 @@ using Base.Test
                     (xs, av, wd) = downsamp_req(cda, 0, 0, 1)
                     (xs, av, wd) = downsamp_req(cda, 0, 1, 0)
                     (xs, av, wd) = downsamp_req(cda, 0, 10, 5)
+
+                    @testset "stftpsd" begin
+                        bsize = 100
+                        s = StftPsd(B, bsize, 1)
+                        cds = CacheAccessor(Averager, s, fs/bsize)
+                        (xs, av, wd) = downsamp_req(cds, 0, 1, 1)
+                    end
                 end
 
             end

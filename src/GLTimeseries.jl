@@ -23,6 +23,8 @@ export
     MappedDynamicDownsampler,
     MaxMin,
     Averager,
+    Stft,
+    StftPsd,
 
     # Functions
     cacheinfo,
@@ -31,7 +33,10 @@ export
     time_interval,
     downsamp_req,
     extent,
+    frequencies,
+    getindex!,
     make_shifter,
+    make_out,
     open_cache_files,
     open_cache_file,
     parse_cache_filenames,
@@ -47,6 +52,7 @@ include("dynamic_windower.jl")
 include("dynamic_downsampler.jl")
 include("maxmin.jl")
 include("averager.jl")
+include("stft.jl")
 include("spectrogram.jl")
 include("mapped_ts.jl")
 include("cache_accessor.jl")
