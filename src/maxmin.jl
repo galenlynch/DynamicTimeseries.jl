@@ -45,9 +45,15 @@ function concrete_type(
 end
 
 function eltype_preview(
-    ::Type{D}, ::Type{<:AbstractVector{T}}
-) where {D<:MaxMin, T<:Number}
+    ::Type{<:MaxMin}, ::Type{<:AbstractVector{T}}
+) where {T<:Number}
     Tuple{T,T}
+end
+
+function arr_eltype_preview(
+    ::Type{<:MaxMin}, ::Type{<:AbstractVector{T}}
+) where {T<:Number}
+    T
 end
 
 length(a::MaxMin) = length(a.winput)

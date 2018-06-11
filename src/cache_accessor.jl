@@ -73,7 +73,7 @@ end
 
 function CacheAccessor(
     ::Type{D},
-    input::A,
+    input::AbstractVector,
     fs::Real,
     args...;
     offset::Real = 0,
@@ -81,7 +81,7 @@ function CacheAccessor(
     f_overlap::Real = 0,
     wmin::Integer = 1,
     kwargs...
-) where {D<:Downsampler, S<:Number, A<:AbstractVector{S}}
+) where {D<:Downsampler}
     CacheAccessor(
         D,
         DynamicWindower(input, fs, offset, dim, f_overlap, wmin),
@@ -96,7 +96,7 @@ function downsamp_req(
     xe,
     reqpts::Integer,
     exact::Bool = true,
-    ::Type{T} = Int32
+    ::Type{T} = Int
 ) where {E, D<:Downsampler, T<:Integer}
     binsize, overlap, i_begin, i_end = downsamp_req_window_info(
         dts.winput, xb, xe, T(reqpts)

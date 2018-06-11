@@ -49,7 +49,7 @@ end
 
 function eltype_preview(
     ::Type{<:Averager}, ::Type{T}, N::Integer, reduce_dim::Bool = def_reduce(N)
-) where {T<:Number}
+) where {T}
     S = div_type(T)
     reduce_dim ? S : Array{S,N}
 end
@@ -57,13 +57,33 @@ end
 function eltype_preview(
     ::Type{D},
     ::Type{<:AbstractArray{T,N}}
-) where {D<:Averager, T<:Number, N}
+) where {D<:Averager, T, N}
     eltype_preview(D, T, N)
+end
+
+function arr_eltype_preview(
+    ::Type{<:Averager}, ::Type{A}
+) where {A<:AbstractArray}
+    T = arr_bit_eltype(A)
+    div_type(T)
+end
+
+function el_size(
+    ::Type{<:Averager},
+    a::AbstractArray{<:Any, N},
+    i::Integer,
+    dim_red::Bool = def_reduce(N)
+) where {N}
+    dim_red ? reduce_dim_size(a, i) : ()
 end
 
 el_size(::Type{<:Averager{<:Any,<:Any,true}}, a::AbstractArray, ::Integer) = ()
 
-function el_size(::Type{<:Averager{<:Any,<:Any,false}}, a::AbstractArray, ::Integer)
+function el_size(::Type{<:Averager{<:Any,<:Any,false}}, a::AbstractArray, dim::Integer)
+    reduce_dim_size(a, dim)
+end
+
+function reduce_dim_size(a::AbstractArray, dim::Integer)
     dims = collect(size(a))
     dims[dim] = 1
     (dims...)

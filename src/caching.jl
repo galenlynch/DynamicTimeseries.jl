@@ -13,8 +13,14 @@ function write_cache_file(
     basename::AbstractString = tempname(),
     dim::Integer = N
 ) where {N, D<:Downsampler}
-    (cachedims, E, cachedata) = prepare_cachefile(D, input, dim)
-    dim_str = join(string.(cachedims), '_')
+    (cachedims, cachedata) = prepare_cachefile(D, input, dim)
+    ndim = length(cachedims)
+    dim_els = Vector{String}(ndim + 1)
+    dim_els[1] = string(ndim)
+    for i in 1:ndim
+        dim_els[i + 1] = string(cachedims[i])
+    end
+    dim_str = join(dim_els, '_')
     path = string(basename, '_', dim_str)
     io = open(path, "w+")
     try
@@ -26,7 +32,7 @@ function write_cache_file(
     end
     close(io)
     autoclean && atexit(() -> rm(path))
-    return (path, E, cachedims)
+    return (path, cachedims)
 end
 
 function write_cache_files(
@@ -37,7 +43,8 @@ function write_cache_files(
     dim::Integer = 1;
     fid::Integer = -1,
     cachedir::AbstractString = tempdir()
-)where {D<:Downsampler, T<:Number, N, A<:AbstractArray{T, N}}
+)where {D<:Downsampler, A<:AbstractArray}
+    input_eltype = arr_eltype_preview(D, A)
     nsamp = length(input)
     if fid > 0
         if ! isdir(cachedir)
@@ -45,11 +52,12 @@ function write_cache_files(
                 "cachedir ", cachedir, " is not a directory"
             ))
         end
-        basestr = string(GL_CACHEPREFIX, '_', fid, '_', T, '_', N)
+        basestr = string(GL_CACHEPREFIX, '_', fid, '_', input_eltype)
         basename = joinpath(cachedir, basestr)
     else
-        basename = string(tempname(), '_', T, '_', N)
+        basename = string(tempname(), '_', input_eltype)
     end
+    E = arr_eltype_preview(D, A)
     if sizehint < nsamp
         # Preallocate
         ndecade = convert(Int, ceil(log10(nsamp / sizehint)))
@@ -57,21 +65,19 @@ function write_cache_files(
 
         # Make first cache file
         dname = basename * "_1"
-        (cachepaths[1], E, cachedim) = write_cache_file(
+        (cachepaths[1], cachedim) = write_cache_file(
             D, input, autoclean, dname, dim
         )
         cachedims = Vector{typeof(cachedim)}(ndecade)
-        println("first cachedim is ", cachedim)
         cachedims[1] = cachedim
         cachearr = open_cache_file(E, cachedims[1], cachepaths[1])
         # Make subsequent cache files
         for dno = 2:ndecade
             dname = string(basename, '_', dno)
             try
-                (cachepaths[dno], temp_el, cachedims[dno]) = write_cache_file(
+                (cachepaths[dno], cachedims[dno]) = write_cache_file(
                     D, cachearr, autoclean, dname
                 )
-                temp_el != E && error("Element types are not all the same")
                 cachearr = open_cache_file(E, cachedims[dno], cachepaths[dno])
             catch
                 for i = 1:(dno - 1)
@@ -81,10 +87,19 @@ function write_cache_files(
             end
         end
     else
+        println("input too small to make cache files? input is ", nsamp, " and sizehint is ", sizehint)
         cachepaths = Vector{String}()
-        lengths = Vector{Int}()
+        cachedims = Vector{NTuple{2, Int}}()
     end
     return (cachepaths, E, cachedims)
+end
+
+arr_bit_eltype(::Type{A}) where {T<:Number, A<:AbstractArray{T, <:Any}} = T
+
+function arr_bit_eltype(
+    ::Type{B}
+) where {T<:Number, A<:AbstractArray{T, <:Any}, B<:AbstractVector{A}}
+    T
 end
 
 function write_cache_files(
