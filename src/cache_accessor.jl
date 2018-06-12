@@ -228,8 +228,8 @@ function reduce_downsample_caches(
         else
             # This cache level will not be used, skip it
             extrema_i = 1 # Do not advance the index
-            pop!(cached_ds) # Shrink cahced_ds by one
-            pop!(weights)
+            deleteat!(cached_ds, 1) # Shrink cahced_ds by one
+            deleteat!(weights, 1)
             # Split indicies in a cache-friendly manner
             next_dec = decno - 1
             remainder_left_stop = (10 ^ next_dec) * ndx_to_dec_ndx(
@@ -246,8 +246,8 @@ function reduce_downsample_caches(
             )
             extrema_i += 1
         else
-            pop!(cached_ds)
-            pop!(weights)
+            deleteat!(cached_ds, extrema_i)
+            deleteat!(weights, extrema_i)
         end
 
         # Recurse on 'right' remainder
@@ -257,8 +257,8 @@ function reduce_downsample_caches(
             )
             extrema_i += 1
         else
-            pop!(cached_ds)
-            pop!(weights)
+            deleteat!(cached_ds, extrema_i)
+            deleteat!(weights, extrema_i)
         end
 
         out, weight = downsamp_reduce(D_concrete, cached_ds, weights)
