@@ -75,8 +75,8 @@ function CacheAccessor(
     ::Type{D},
     input::AbstractVector,
     fs::Real,
-    args...;
     offset::Real = 0,
+    args...;
     dim::Integer = 1,
     f_overlap::Real = 0,
     wmin::Integer = 1,
@@ -92,8 +92,8 @@ end
 
 function downsamp_req(
     dts::CacheAccessor{<:Any,E,D,<:Any},
-    xb,
-    xe,
+    xb::Real,
+    xe::Real,
     reqpts::Integer,
     exact::Bool = true,
     ::Type{T} = Int
