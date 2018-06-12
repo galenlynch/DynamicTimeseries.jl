@@ -131,7 +131,7 @@ using Base.Test
             @testset "CacheAccessor" begin
 
                 @testset "MaxMin" begin
-                    cdt = CacheAccessor(MaxMin, A, fs, maxpt)
+                    cdt = CacheAccessor(MaxMin, A, fs, 0, maxpt)
                     (xs, mm, wd) = downsamp_req(cdt, 0, 0, 1)
                     (xs, mm, wd) = downsamp_req(cdt, 0, 1, 0)
                     (xs, mm, was_downsamped) = downsamp_req(cdt, 0, 1, 100)
@@ -141,7 +141,7 @@ using Base.Test
                     (xs, mm, was_downsamped) = downsamp_req(cdt, 0, 100, 100)
                     (xs, mm, was_downsamped) = downsamp_req(cdt, 0, 10, 50)
                     (xs, mm, was_downsamped) = downsamp_req(cdt, 0, 100, 10)
-                    cdt = CacheAccessor(MaxMin, A, fs, maxpt, false)
+                    cdt = CacheAccessor(MaxMin, A, fs, 0, maxpt, false)
                     # cdt = CachingDynamicTs(A, fs, 0, maxpt, false)
                     const npt_C = 10000
                     const C = rand(10000)
@@ -155,7 +155,7 @@ using Base.Test
 
                 @testset "Averager" begin
                     println("size of A is ", size(A))
-                    cda = CacheAccessor(Averager, A, fs, maxpt)
+                    cda = CacheAccessor(Averager, A, fs, 0, maxpt)
                     (xs, av, wd) = downsamp_req(cda, 0, 0, 1)
                     (xs, av, wd) = downsamp_req(cda, 0, 1, 0)
                     (xs, av, wd) = downsamp_req(cda, 0, 10, 5)
@@ -173,7 +173,7 @@ using Base.Test
             end
 
             @testset "MappedDynamicDownsampler" begin
-                cdt = CacheAccessor(MaxMin, A, fs, maxpt)
+                cdt = CacheAccessor(MaxMin, A, fs, 0, maxpt)
                 c = 5
                 mds = MappedDynamicDownsampler(cdt, make_shifter(c))
                 (xs, ys) = downsamp_req(mds, 0, 100, 10)

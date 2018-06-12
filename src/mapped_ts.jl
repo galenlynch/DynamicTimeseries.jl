@@ -21,7 +21,7 @@ fs(d::MappedDynamicDownsampler) = fs(d.downsampler)
 baselength(d::MappedDynamicDownsampler) = baselength(d.downsampler)
 start_time(d::MappedDynamicDownsampler) = start_time(d.downsampler)
 
-make_shifter(shift) = (x) -> shift_extrema!(shift, x)
+make_shifter(shift) = (x) -> shift_extrema(shift, x)
 
 function shift_extrema(shift, ys::T) where {S, T<:NTuple{2,S}}
     (ys[1] + shift, ys[2] + shift)
@@ -44,4 +44,9 @@ function shift_extrema(shift, ys::AbstractVector)
     shifted = similar(ys)
     shift_extrema!(shift, shifted, ys)
     return shifted
+end
+
+function extrema(md::MappedDynamicDownsampler)
+    base_ext = extrema(md.downsampler)
+    md.fmap(base_ext)
 end
