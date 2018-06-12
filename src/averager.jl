@@ -70,24 +70,64 @@ end
 
 function el_size(
     ::Type{<:Averager},
-    a::AbstractArray{<:Any, N},
-    i::Integer,
+    a::AbstractArray{E, N},
+    dim::Integer,
     dim_red::Bool = def_reduce(N)
-) where {N}
-    dim_red ? reduce_dim_size(a, i) : ()
+) where {E, N}
+    dim_red ? reduce_dim_size(a) : noreduce_dim_size(a, dim)
 end
 
-el_size(::Type{<:Averager{<:Any,<:Any,true}}, a::AbstractArray, ::Integer) = ()
-
-function el_size(::Type{<:Averager{<:Any,<:Any,false}}, a::AbstractArray, dim::Integer)
-    reduce_dim_size(a, dim)
+function el_size(
+    ::Type{<:Averager{<:Any,<:Any,true}},
+    a::AbstractArray,
+    ::Integer,
+    ::Bool = false
+)
+    noreduce_dim_size(a, i)
 end
 
-function reduce_dim_size(a::AbstractArray, dim::Integer)
+function el_size(
+    ::Type{<:Averager{<:Any,<:Any,false}},
+    a::AbstractArray,
+    dim::Integer,
+    ::Bool = false
+)
+    reduce_dim_size(a)
+end
+
+function noreduce_dim_size(a::AbstractArray, dim::Integer)
+    el_dims = reduce_dim_size(a)
     dims = collect(size(a))
     dims[dim] = 1
+    if ! isempty(el_dims)
+        el_dim_vec = collect(el_dims)
+        append!(el_dim_vec, dims)
+        dims = el_dim_vec
+    end
     (dims...)
 end
+
+function reduce_dim_size(a::AbstractArray{<:AbstractArray, <:Any})
+    # assumes elements are all the same size
+    if isempty(a)
+        throw(ArgumentError("Empty array"))
+    end
+    nested_arr_size(a[1])
+end
+reduce_dim_size(a::AbstractArray{<:Number, <:Any}) = ()
+reduce_dim_size(a::AbstractArray, ::Integer) = reduce_dim_size(a)
+
+function nested_arr_size(a::AbstractArray{<:AbstractArray, <:Any})
+    # assumes elements are all the same size
+    if ! isempty(a)
+        el_dims = collect(nested_arr_size(a[1]))
+        append!(el_dims, collect(size(a)))
+    else
+        throw(ArgumentError("Empty array"))
+    end
+    return (el_dims...)
+end
+nested_arr_size(a::AbstractArray{<:Number, <:Any}) = size(a)
 
 function getindex(
     a::Averager{E, <:Any, true}, i::Integer
@@ -113,12 +153,16 @@ bin_bounds(i::Integer, a::Averager) = bin_bounds(i, a.winput)
 
 function downsamp_reduce(
     ::Type{<:Averager{<:Any, <:Any, false}},
-    ds::AbstractArray{E, N},
-    weigths::AbstractVector{T},
+    ds::AbstractArray{<:Any, N},
+    weigths::AbstractVector{<:Number},
     dim::Integer = N
-) where {E<:Number, N, T<:Number}
+) where {N}
     if size(ds, dim) != length(weights)
-        throw(ArgumentError("ds and weights are not the same size"))
+        throw(ArgumentError(string(
+        "ds (size $(size(ds))) ",
+        "and weights (size $(size(weights))) ",
+        "are not the same size on dim $dim"
+        )))
     end
     total_weight = sum(weights)
     reduced = weighted_mean_dim(ds, weights, dim, total_weight)
@@ -127,14 +171,42 @@ end
 
 function downsamp_reduce(
     ::Type{<:Averager{<:Any, <:Any, true}},
-    ds::AbstractVector{<:Any},
-    weights::AbstractVector{<:Number},
+    ds::AbstractArray{<:Any, N},
+    weights::AbstractArray{<:Number, N},
     ::Integer = 0
-)
-    if length(ds) != length(weights)
-        throw(ArgumentError("ds and weights are not the same size"))
+) where {N}
+    println("Hit vector downsamp_reduce")
+    println("ds is type ", typeof(ds))
+    if size(ds) != size(weights)
+        throw(ArgumentError(string(
+            "ds (size $(size(ds))) ",
+            "and weights (size $(size(weights))) ",
+            "are not the same size"
+        )))
     end
     total_weight = sum(weights)
     reduced = weighted_mean(ds, weights, total_weight)
     return (reduced, total_weight)
+end
+
+function downsamp_reduce_cache(
+    ::Type{<:Averager{<:Any, <:Any, true}},
+    ds::AbstractArray{<:Any, N},
+    weights::AbstractVector{<:Number},
+) where {N}
+    if size(ds, N) != length(weights)
+        throw(ArgumnetError("last dim of ds does not match weights"))
+    end
+    total_weight = sum(weights)
+    reduced = weighted_mean_dim(ds, weights, N, total_weight)
+    squeezed = squeeze(reduced, N)
+    return (squeezed, total_weight)
+end
+
+function downsamp_reduce_cache(
+    ::Type{A},
+    ds::AbstractVector,
+    weights::AbstractVector{<:Number},
+) where {A<:Averager{<:Any, <:Any, true}}
+    downsamp_reduce(A, ds, weights)
 end

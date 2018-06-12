@@ -4,8 +4,13 @@ array interface
 binsize
 bin_bounds
 downsamp_reduce
+downsamp_reduce_cache
 """
 abstract type Downsampler{T, N} <: AbstractArray{T, N} end
+
+function downsamp_reduce_cache(::Type{D}, args...) where D<:Downsampler
+    downsamp_reduce(D, args...)
+end
 
 """
 Must implement:

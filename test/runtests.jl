@@ -161,9 +161,11 @@ using Base.Test
                     (xs, av, wd) = downsamp_req(cda, 0, 10, 5)
 
                     @testset "stftpsd" begin
-                        bsize = 100
-                        s = StftPsd(B, bsize, 1)
-                        cds = CacheAccessor(Averager, s, fs/bsize)
+                        fss = 40000
+                        D = rand(fss)
+                        bsize = 512
+                        s = StftPsd(D, bsize, fss)
+                        cds = CacheAccessor(Averager, s, fss / bsize)
                         (xs, av, wd) = downsamp_req(cds, 0, 1, 1)
                     end
                 end

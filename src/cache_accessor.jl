@@ -163,11 +163,11 @@ end
 
 function exact_downsample(
     dts::CacheAccessor{<:Any,E,<:Any,<:Any,<:Any},
-     nbase::Integer,
-     binsize::Integer,
-     i_begin::Integer,
-     i_end::Integer,
-     x_start::Real
+    nbase::Integer,
+    binsize::Integer,
+    i_begin::Integer,
+    i_end::Integer,
+    x_start::Real
 ) where {E}
     nbin = cld(nbase, binsize)
     ys = Vector{E}(nbin)
@@ -194,11 +194,19 @@ function reduce_downsample_caches(
     # together and traverse the caches (as well as the input data) to get the
     # full answer.
 
+    println("Type parameter E is ", E)
+    println("input dim is ", dts.winput.dim)
     nbase = n_ndx(i_start, i_stop)
     decno = min(floor(Int, log10(nbase)), length(dts.cachearrays))
     D_concrete = concrete_type(D, windowtype(W))
+    println("D_concrete is type ", D_concrete)
+    println("Parameters are : ")
+    for (i, param) in enumerate(D_concrete.parameters)
+        println("param ", i, " is ", param)
+    end
     if decno > 0
         cached_ds = Vector{E}(3) # storage for left, right, and center
+        println("cached_ds is type ", typeof(cached_ds))
         weights = Vector{Int}(3)
         n_input = length(basedata(dts.winput)) # number of original samples
 
@@ -213,13 +221,21 @@ function reduce_downsample_caches(
         end
 
         slice_idx = make_slice_idx(N, N, contained_first:contained_last)
+        println(
+            "Making view from cachearray ",
+            decno,
+            " which is type ",
+            typeof(dts.cachearrays[decno]),
+            " and size ",
+            size(dts.cachearrays[decno])
+        )
         contained_view = view(dts.cachearrays[decno], slice_idx...)
 
         # Reduce contained cache values
         if size(contained_view, N) > 0 # if the view is not empty
             # Reduce downsampled values from this cache level
             reduce_weights = fill(10 ^ decno, size(contained_view, N))
-            cached_ds[1], weights[1] = downsamp_reduce(
+            cached_ds[1], weights[1] = downsamp_reduce_cache(
                 D_concrete, contained_view, reduce_weights
             )
             extrema_i = 2 # advance cached_ds index
@@ -261,12 +277,14 @@ function reduce_downsample_caches(
             deleteat!(weights, extrema_i)
         end
 
-        out, weight = downsamp_reduce(D_concrete, cached_ds, weights)
+        out, weight = downsamp_reduce_cache(D_concrete, cached_ds, weights)
     else # We're at the base level
         slice_idx = make_slice_idx(M, dts.winput.dim, i_start:i_stop)
         baseview = view(basedata(dts.winput), slice_idx...)
         reduce_weights = fill(1, size(baseview, dts.winput.dim))
-        out, weight = downsamp_reduce(D_concrete, baseview, reduce_weights, dts.winput.dim)
+        out, weight = downsamp_reduce(
+            D_concrete, baseview, reduce_weights, dts.winput.dim
+        )
     end
     return out, weight
 end
