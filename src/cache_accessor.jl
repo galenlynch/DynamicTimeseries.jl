@@ -194,19 +194,11 @@ function reduce_downsample_caches(
     # together and traverse the caches (as well as the input data) to get the
     # full answer.
 
-    println("Type parameter E is ", E)
-    println("input dim is ", dts.winput.dim)
     nbase = n_ndx(i_start, i_stop)
     decno = min(floor(Int, log10(nbase)), length(dts.cachearrays))
     D_concrete = concrete_type(D, windowtype(W))
-    println("D_concrete is type ", D_concrete)
-    println("Parameters are : ")
-    for (i, param) in enumerate(D_concrete.parameters)
-        println("param ", i, " is ", param)
-    end
     if decno > 0
         cached_ds = Vector{E}(3) # storage for left, right, and center
-        println("cached_ds is type ", typeof(cached_ds))
         weights = Vector{Int}(3)
         n_input = length(basedata(dts.winput)) # number of original samples
 
@@ -221,14 +213,6 @@ function reduce_downsample_caches(
         end
 
         slice_idx = make_slice_idx(N, N, contained_first:contained_last)
-        println(
-            "Making view from cachearray ",
-            decno,
-            " which is type ",
-            typeof(dts.cachearrays[decno]),
-            " and size ",
-            size(dts.cachearrays[decno])
-        )
         contained_view = view(dts.cachearrays[decno], slice_idx...)
 
         # Reduce contained cache values

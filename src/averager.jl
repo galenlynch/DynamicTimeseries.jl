@@ -175,8 +175,6 @@ function downsamp_reduce(
     weights::AbstractArray{<:Number, N},
     ::Integer = 0
 ) where {N}
-    println("Hit vector downsamp_reduce")
-    println("ds is type ", typeof(ds))
     if size(ds) != size(weights)
         throw(ArgumentError(string(
             "ds (size $(size(ds))) ",

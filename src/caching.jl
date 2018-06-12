@@ -13,9 +13,7 @@ function write_cache_file(
     basename::AbstractString = tempname(),
     dim::Integer = N
 ) where {N, D<:Downsampler}
-    println("Making cache file for type ", D, " with dim ", dim)
     (cachedims, cachedata) = prepare_cachefile(D, input, dim)
-    println("Cachedims are ", cachedims)
     ndim = length(cachedims)
     dim_els = Vector{String}(ndim + 1)
     dim_els[1] = string(ndim)
@@ -89,7 +87,6 @@ function write_cache_files(
             end
         end
     else
-        println("input too small to make cache files? input is ", nsamp, " and sizehint is ", sizehint)
         cachepaths = Vector{String}()
         cachedims = Vector{NTuple{2, Int}}()
     end
