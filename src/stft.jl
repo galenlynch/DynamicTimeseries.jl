@@ -47,7 +47,7 @@ struct Stft{
 end
 
 function Stft(
-    winput::W, plan::P, fs::Real, winfun::Function = blackman
+    winput::W, plan::P, fs::Real; winfun::Function = blackman
 ) where {W<:WindowedArray{<:Any, <:Any, 1, <:Any}, P<:Base.DFT.Plan}
     Stft{Vector{Complex{Float64}}, W, P}(
         winput, plan, convert(Float64, fs), winfun
@@ -55,11 +55,11 @@ function Stft(
 end
 
 function Stft(
-    winput::W, fs::Real = 1, args...
+    winput::W, fs::Real = 1, args...; kwargs...
 ) where W<:WindowedArray{<:Any, <:Any, 1, <:Any}
     nfft = nextfastfft(winput.binsize)
     plan = plan_rfft(Vector{Float64}(nfft))
-    Stft(winput, plan, fs, args...)
+    Stft(winput, plan, fs, args...; kwargs...)
 end
 
 function Stft(
@@ -67,10 +67,11 @@ function Stft(
     binsize::Integer,
     fs::Real,
     args...;
-    overlap::Integer = 0
+    overlap::Integer = 0,
+    kwargs...
 )
     winput = WindowedArray(input, binsize, 1, overlap)
-    Stft(winput, fs, args...)
+    Stft(winput, fs, args...; kwargs...)
 end
 
 frequencies(a::Stft) = a.frequencies
