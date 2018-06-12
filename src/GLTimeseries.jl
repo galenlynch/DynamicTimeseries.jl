@@ -16,6 +16,7 @@ export
     DynamicWindower,
     CacheAccessor,
     CachingDynamicTs,
+    CachingStftPsd,
     Downsampler,
     AbstractDynamicDownsampler,
     DynamicDownsampler,
@@ -59,5 +60,6 @@ include("cache_accessor.jl")
 include("caching.jl")
 include("caching_ts.jl")
 include("caching_averager.jl")
+include("caching_stft.jl")
 
 end # module

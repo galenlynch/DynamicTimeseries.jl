@@ -170,6 +170,14 @@ using Base.Test
                     end
                 end
 
+                @testset "CachingStftPsd" begin
+                    fss = 40000
+                    D = rand(fss)
+                    bsize = 512
+                    csp = CachingStftPsd(D, bsize, fss; f_overlap = 0.8)
+                    (xs, av, wd) = downsamp_req(csp, 0, 1, 1)
+                end
+
             end
 
             @testset "MappedDynamicDownsampler" begin
