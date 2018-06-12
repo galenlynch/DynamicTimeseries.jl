@@ -4,7 +4,7 @@ struct Stft{
     winput::W
     fs::Float64
     win::Vector{Float64}
-    winfun::Function
+    winfun::Function # must be Integer -> Vector{Float64}
     r::Float64
     r_temp::Vector{Float64}
     plan::P
@@ -19,7 +19,7 @@ struct Stft{
         nfft = length(plan)
         nout = div(nfft, 2) + 1
 
-        win = winfun(winput.binsize)
+        win = winfun(winput.binsize)::Vector{Float64}
 
         norm2 = sum(abs2, win)
         r = fs * norm2

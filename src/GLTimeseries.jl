@@ -20,6 +20,7 @@ export
     Downsampler,
     AbstractDynamicDownsampler,
     DynamicDownsampler,
+    AbstractDynamicSpectrogram,
     DynamicSpectrogram,
     MappedDynamicDownsampler,
     MaxMin,

@@ -1,35 +1,39 @@
+abstract type AbstractDynamicSpectrogram{T} <:
+    AbstractDynamicDownsampler{Tuple{Vector{Float64}, Array{T, 2}, Float64, Float64}}
+end
+
 struct DynamicSpectrogram{
     T<:AbstractFloat, W<:DynamicWindower{<:Any,<:Number,1,<:Any}
-} <: AbstractDynamicDownsampler{Tuple{Vector{Float64}, Array{T, 2}}}
+} <: AbstractDynamicSpectrogram{T}
     winput::W
+    winfun::Function
     window::Vector{Float64}
     function DynamicSpectrogram{T,W}(
-        winput::W, window::Vector{Float64}
+        winput::W, winfun::Function
     ) where {T<:AbstractFloat,W<:DynamicWindower{<:Any,<:Number,1,<:Any}}
-        if length(window) != winput.wmin
-            throw(ArgumentError("wmin must match window length"))
-        end
-        new(winput, window)
+        window = winfun(winput.wmin)::Vector{Float64}
+        new(winput, winfun, window)
     end
 end
 
 function DynamicSpectrogram(
-    winput::W, window::Vector{Float64} = hanning(512)
+    winput::W, winfun::Function = blackman
 ) where {T,W<:DynamicWindower{<:Any,T,1,<:Any}}
     S = div_type(T)
-    DynamicSpectrogram{S,W}(winput, window)
+    DynamicSpectrogram{S,W}(winput, winfun)
 end
 
 function DynamicSpectrogram(
     input::A,
     fs::Real,
     offset::Real = 0,
-    overlap::Float64 = 0.8,
-    window::Vector{Float64} = hanning(512),
+    overlap::Float64 = 0.8;
+    min_window::Integer = 512,
+    winfun::Function = blackman
 ) where {T<:Real, A<:AbstractVector{T}}
     DynamicSpectrogram(
-        DynamicWindower(input, fs, offset, 1, overlap, length(window)),
-        window
+        DynamicWindower(input, fs, offset, 1, overlap, min_window),
+        winfun
     )
 end
 
@@ -42,7 +46,7 @@ center of the last time bin is around xe.
 """
 function downsamp_req(
     ds::DynamicSpectrogram{T, <:Any}, xb, xe, npt::Integer, args...;
-    windowfun::Function = hanning
+    windowfun::Function = blackman
 ) where {T<:AbstractFloat}
     # Figure out what was asked of us
     win_l, overlap, ib_ex, ie_ex = downsamp_req_window_info(ds.winput, xb, xe, npt)
@@ -51,7 +55,7 @@ function downsamp_req(
     v = view(basedata(ds.winput), ib_ex:ie_ex)
     # Select the portion of the signal in range
 
-    window = win_l == length(ds.window) ? ds.window : hanning
+    window = win_l == length(ds.window) ? ds.window : windowfun
 
     srate = fs(ds.winput)
 
