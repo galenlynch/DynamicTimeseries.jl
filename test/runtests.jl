@@ -111,20 +111,16 @@ using Base.Test
             const maxpt = 10
             @testset "Caching" begin
                 wa = DynamicWindower(A, fs)
-                (path, npair) = write_cache_file(
-                    MaxMin, A
-                )
-                (files, lengths) = write_cache_files(
-                    MaxMin, A, 10
-                )
-                println(files)
-                println(lengths)
+                (path, npair) = write_cache_file(MaxMin, A)
+                (files, E, dims) = write_cache_files(MaxMin, A, 10)
+                @test E == Int
+                @test isa(files, Vector{String})
+                @test isa(dims, Vector{NTuple{2, Int}})
+                GLTimeseries.sort_cache_files(files, dims, 2)
                 cachedir = tempdir()
-                (files, lengths) = write_cache_files(
+                (files, E, lengths) = write_cache_files(
                     MaxMin, A, 10, true;
                     cachedir=cachedir, fid=1)
-                println(files)
-                println(lengths)
                 cachearr = open_cache_files(Int, cachedir, 1)
             end
 
@@ -136,18 +132,23 @@ using Base.Test
                     (xs, mm, wd) = downsamp_req(cdt, 0, 1, 0)
                     (xs, mm, was_downsamped) = downsamp_req(cdt, 0, 1, 100)
                     @test length(mm) == 11
-                    println(time_interval(cdt))
                     (xs, mm, wd) = downsamp_req(cdt, 0, 100, 10, false)
                     (xs, mm, was_downsamped) = downsamp_req(cdt, 0, 100, 100)
                     (xs, mm, was_downsamped) = downsamp_req(cdt, 0, 10, 50)
                     (xs, mm, was_downsamped) = downsamp_req(cdt, 0, 100, 10)
+                    @test time_interval(cdt) == (0.0, 100.0)
                     cdt = CacheAccessor(MaxMin, A, fs, 0, maxpt, false)
-                    # cdt = CachingDynamicTs(A, fs, 0, maxpt, false)
+                    (paths, E, dims) = write_cache_files(MaxMin, A, 10)
+                    cdt_files = CacheAccessor(
+                        MaxMin, A, fs, 0, Int, dims, paths, false
+                    )
+                    cdt_files = CacheAccessor(
+                        MaxMin, A, fs, 0, Int, dims, paths, false; checkfiles = false
+                    )
                     const npt_C = 10000
                     const C = rand(10000)
                     const fs_C = 100
                     const dts_C = CacheAccessor(MaxMin, C, fs_C)
-                    # const dts_C = CachingDynamicTs(C, fs_C)
                     const true_extrema = extrema(C)
                     (xs, ys, _) = downsamp_req(dts_C, 0.0, 99.99, 74)
                     @test GLTimeseries.extrema_red(ys) == true_extrema

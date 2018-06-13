@@ -210,11 +210,15 @@ function validate_cache_arrays(
 end
 
 function sort_cache_files(
-    cachepaths::AbstractArray{<:AbstractString},
-    cachedims::AbstractArray{N, <:Integer},
+    cachepaths::AbstractVector{<:AbstractString},
+    cachedims::AbstractVector{<:NTuple{N, <:Integer}},
     dim::Integer
 ) where {N}
-    cachlengths = size.(cachedims, dim)
+    nf = length(cachepaths)
+    cachelengths = Vector{Int}(nf)
+    for (i, dims) in enumerate(cachedims)
+        cachelengths[i] = dims[dim]
+    end
     p = sortperm(cachelengths; rev=true)
     sorted_cachedims = cachedims[p]
     sorted_cachepaths = cachepaths[p]
