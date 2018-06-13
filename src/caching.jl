@@ -1,6 +1,6 @@
 const GL_CACHEPREFIX = "GLTSCACHE"
 
-cache_reg(fid::Integer, ::Type{T}, n::Integer) where {T<:Number} = Regex(
+cache_reg(fid::Integer, ::Type{T}) where {T<:Number} = Regex(
     string(
         "^", GL_CACHEPREFIX, '_', fid, '_', T, '_', "_(\\d+)_([\\d_]+)\$"
     )
@@ -159,7 +159,7 @@ end
 function parse_cache_filenames(
     cachedir::AbstractString, fid::Integer, ::Type{T}, n::Integer
 ) where {T<:Number}
-    matches = dir_match_files(cache_reg(fid, T, n), cachedir)
+    matches = dir_match_files(cache_reg(fid, T), cachedir)
     nm = length(matches)
 
     dims = Vector{NTuple{n, Int}}(nm)
