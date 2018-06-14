@@ -10,6 +10,7 @@ struct CacheAccessor{
         cachearrays::Vector{Array{S,N}},
         cachepaths::Vector{String}
     ) where {W<:DynamicWindower,E,D<:Downsampler,S<:Number,N}
+        validate_cacher_dynwindow(winput)
         validate_cache_arrays(
             cachepaths,
             cachearrays,
@@ -42,13 +43,12 @@ function CacheAccessor(
     ::Type{E},
     cachedims::AbstractVector{<:NTuple{N, <:Integer}},
     cachepaths::AbstractVector{<:AbstractString},
-    autoclean::Bool = true,
-    dim::Integer = N;
+    autoclean::Bool = true;
     checkfiles::Bool = true
 ) where {N, D<:Downsampler, E<:Number}
     if checkfiles
         cachepaths, cachedims = sort_cache_files(
-            cachepaths, cachedims, dim
+            cachepaths, cachedims, N
         )
     end
     cachearrays = open_cache_files(
@@ -73,21 +73,26 @@ end
 
 function CacheAccessor(
     ::Type{D},
-    input::AbstractVector,
+    input::AbstractArray{<:Any, N},
     fs::Real,
     offset::Real = 0,
     args...;
-    dim::Integer = 1,
     f_overlap::Real = 0,
     wmin::Integer = 1,
     kwargs...
-) where {D<:Downsampler}
+) where {N, D<:Downsampler}
     CacheAccessor(
         D,
-        DynamicWindower(input, fs, offset, dim, f_overlap, wmin),
+        DynamicWindower(input, fs, offset, N, f_overlap, wmin),
         args...;
         kwargs...
     )
+end
+
+function validate_cacher_dynwindow(winput::DynamicWindower)
+    if winput.dim != ndims(basedata(winput))
+        throw(ArgumentError("DynamicWindower must operate on last dimension"))
+    end
 end
 
 function downsamp_req(
