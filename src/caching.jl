@@ -11,9 +11,14 @@ function write_cache_file(
     input::AbstractArray{<:Any, N},
     autoclean::Bool = true,
     basename::AbstractString = tempname(),
+    fromcache::Bool = false,
     dim::Integer = N
 ) where {N, D<:Downsampler}
-    (cachedims, cachedata) = prepare_cachefile(D, input, dim)
+    if fromcache
+        (cachedims, cachedata) = prepare_next_cachefile(D, input, dim)
+    else
+        (cachedims, cachedata) = prepare_cachefile(D, input, dim)
+    end
     ndim = length(cachedims)
     dim_els = Vector{String}(ndim + 1)
     dim_els[1] = string(ndim)
@@ -66,7 +71,7 @@ function write_cache_files(
         # Make first cache file
         dname = basename * "_1"
         (cachepaths[1], cachedim) = write_cache_file(
-            D, input, autoclean, dname, dim
+            D, input, autoclean, dname, false, dim
         )
         cachedims = Vector{typeof(cachedim)}(ndecade)
         cachedims[1] = cachedim
@@ -75,9 +80,10 @@ function write_cache_files(
         for dno = 2:ndecade
             dname = string(basename, '_', dno)
             try
-                (cachepaths[dno], cachedims[dno]) = write_cache_file(
-                    D, cachearr, autoclean, dname
+                tmp_path, tmp_dims = write_cache_file(
+                    D, cachearr, autoclean, dname, true
                 )
+                (cachepaths[dno], cachedims[dno]) = tmp_path, tmp_dims
                 cachearr = open_cache_file(E, cachedims[dno], cachepaths[dno])
             catch
                 for i = 1:(dno - 1)

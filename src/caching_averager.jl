@@ -21,3 +21,7 @@ function prepare_cachefile(
     end
     return cachedims, ds
 end
+
+function prepare_next_cachefile(::Type{A}, args...) where {A<:Averager}
+    prepare_cachefile(A, args...)
+end
