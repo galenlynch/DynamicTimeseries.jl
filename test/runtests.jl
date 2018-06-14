@@ -59,7 +59,6 @@ using Base.Test
             @test avg_overlap[1] == mean(B[1:7])
             @test avg_overlap[2] == mean(B[5:11])
             D = rand(8, 4)
-            println("D is ", D)
             avg_2d = Averager(D, 5, 1, 2)
             @test avg_2d[1] == mean(D[1:5, :], 1)
             @test avg_2d[2] == mean(D[4:8, :], 1)
@@ -155,7 +154,6 @@ using Base.Test
                 end
 
                 @testset "Averager" begin
-                    println("size of A is ", size(A))
                     cda = CacheAccessor(Averager, A, fs, 0, maxpt)
                     (xs, av, wd) = downsamp_req(cda, 0, 0, 1)
                     (xs, av, wd) = downsamp_req(cda, 0, 1, 0)
@@ -174,7 +172,7 @@ using Base.Test
                 @testset "CachingStftPsd" begin
                     fss = 40000
                     D = rand(fss)
-                    bsize = 512
+                    bsize = 10
                     csp = CachingStftPsd(D, bsize, fss; f_overlap = 0.8)
                     (xs, av, wd) = downsamp_req(csp, 0, 1, 1)
                 end
@@ -188,8 +186,6 @@ using Base.Test
                 (xs, ys) = downsamp_req(mds, 0, 100, 10)
                 (xs, mm, wd) = downsamp_req(mds, 0, 0, 1)
                 (xs, mm, wd) = downsamp_req(mds, 0, 1, 0)
-                println(mm)
-                println(ys)
             end
         end
 end
