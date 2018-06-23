@@ -151,23 +151,39 @@ make_out(a::StftPsd) = Vector{Float64}(a.stft.nout)
 
 function getindex(s::StftPsd, i::Integer)
     dest = make_out(s)
-    getindex!(dest, s, i)
+    getindex_unsafe!(dest, s, i)
 end
 
 function getindex!(out, s::StftPsd, i::Integer)
-    @boundscheck checkbounds(s, i)
-    getindex!(s.fftbuf, s.stft, i)
-    fft2pow!(out, s.fftbuf, s.stft.nfft, s.stft.r_temp[1])
+    if ! copy_length_check(length(out), s.stft.nout)
+        throw(ArgumentError("Dest must be at least as long as s_fft"))
+    end
+    getindex_unsafe!(out, s, i)
+end
+
+function getindex_unsafe!(out, s::StftPsd, i::Integer)
+    getindex!(s.fftbuf, s.stft, i) # Does a bounds check
+    fft2pow_unsafe!(out, s.fftbuf, s.stft.nfft, s.stft.r_temp[1], s.stft.nout)
 end
 
 frequencies(s::StftPsd) = frequencies(s.stft)
 basedata(s::StftPsd) = basedata(s.stft)
 
-function fft2pow!(
-    dest::Vector{T}, s_fft::Vector{Complex{T}}, nfft::Integer, r::Real
-) where T
+function fft2pow!(dest::AbstractVector, s_fft::AbstractVector, nfft::Integer, r::Real)
     n = length(s_fft)
-    n <= length(dest) || throw(ArgumentError("dest must be at least as long as s_fft"))
+    if ! copy_length_check(length(dest), n)
+        throw(ArgumentError("dest must be at least as long as s_fft"))
+    end
+    fft2pow_unsafe!(dest, s_fft, nfft, r, n)
+end
+
+function fft2pow_unsafe!(
+    dest::AbstractVector{T},
+    s_fft::AbstractVector{Complex{T}},
+    nfft::Integer,
+    r::Real,
+    n::Integer = length(s_fft)
+) where T
     m1 = convert(T, 1/r)
     m2 = 2 * m1
     @inbounds dest[1] = m1 * abs2(s_fft[1])
