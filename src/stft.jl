@@ -94,17 +94,23 @@ make_out(a::Stft) = Vector{Complex{Float64}}(a.nout)
 function window_index!(a::Stft, i::Integer)
     v = a.winput[i]
     nv = length(v)
-    full_bin = length(a.win) == nv
 
-    if full_bin
-        win = a.win
-        a.r_temp[1] = a.r
+    if nv > 1
+        if nv == length(a.win)
+            win = a.win
+            a.r_temp[1] = a.r
+        else nv > 1
+            win = a.winfun(nv)::Vector{Float64}
+            a.r_temp[1] = a.fs * sum(abs2, win)
+        end
+        @simd for i in 1:nv
+            @inbounds a.winbuf[i] = win[i] * v[i]
+        end
+    elseif nv == 1
+        @inbounds a.winbuf[1] = 1
+        a.r_temp[1] = a.fs
     else
-        win = a.winfun(nv)::Vector{Float64}
-        a.r_temp[1] = a.fs * sum(abs2, win)
-    end
-    @simd for i in 1:nv
-        @inbounds a.winbuf[i] = win[i] * v[i]
+        a.r_temp[1] = a.fs
     end
     @simd for i in (nv + 1):a.winput.binsize
         @inbounds a.winbuf[i] = 0
