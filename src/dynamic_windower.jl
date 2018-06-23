@@ -27,7 +27,7 @@ function DynamicWindower(
     wmin::Integer = 1
 ) where {T,N,A<:AbstractArray{T,N}}
     if dim < 1 || dim > N
-        throw(ArgumentError("dimension out of bounds"))
+        throw(ArgumentError("dimension is $dim which is not between 1 and $N"))
     end
     si = make_slice_idx(N, dim, 1:1)
     v = view(input, si...)
