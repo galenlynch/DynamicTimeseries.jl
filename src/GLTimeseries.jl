@@ -18,6 +18,7 @@ export
     CachingDynamicTs,
     CachingStftPsd,
     Downsampler,
+    DynCachingStftPsd,
     AbstractDynamicDownsampler,
     DynamicDownsampler,
     AbstractDynamicSpectrogram,
@@ -62,5 +63,6 @@ include("caching.jl")
 include("caching_ts.jl")
 include("caching_averager.jl")
 include("caching_stft.jl")
+include("dynamic_stft.jl")
 
 end # module

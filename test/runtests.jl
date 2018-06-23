@@ -169,12 +169,25 @@ using Base.Test
                     end
                 end
 
+                const fss = 40000
+                const D = rand(fss)
+                const bsize = 10
+
                 @testset "CachingStftPsd" begin
-                    fss = 40000
-                    D = rand(fss)
-                    bsize = 10
                     csp = CachingStftPsd(D, bsize, fss; f_overlap = 0.8)
+                    println("Time interval for caching psd is ", time_interval(csp))
                     (xs, av, wd) = downsamp_req(csp, 0, 1, 1)
+                    (xs, av, wd) = downsamp_req(csp, 0, bsize / fss , 1)
+                end
+
+                @testset "DynCachingStftPsd" begin
+                    dcsp = DynCachingStftPsd(D, bsize, fss; f_overlap = 0.8)
+                    @test dcsp.winput.offset == 0
+                    println("Time interval for dyn caching psd is ", time_interval(dcsp))
+                    (xs, av, wd) = downsamp_req(dcsp, 0, 1, 1)
+                    (xs, av, wd) = downsamp_req(dcsp, 0, bsize / fss, 1)
+                    S = av[2]
+                    @test ! any(isnan.(S))
                 end
 
             end
