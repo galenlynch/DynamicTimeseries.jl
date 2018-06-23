@@ -103,18 +103,13 @@ function downsamp_req(
     exact::Bool = true,
     ::Type{T} = Int
 ) where {E, D<:Downsampler, T<:Integer}
-    binsize, overlap, i_begin, i_end = downsamp_req_window_info(
-        dts.winput, xb, xe, T(reqpts)
-    )
-    nbase = n_ndx(i_begin, i_end)
+    (binsize, overlap, i_begin, i_end, nbase, decno, x_start) =
+        cacher_downsamp_info(dts, xb, xe, reqpts, T)
 
     if nbase <= 0 || reqpts == 0
         return (Vector{Float64}(), Vector{E}(), false)
     end
 
-    ncache = T(length(dts.cachearrays))
-    decno = min(floor(T, log10(binsize)), ncache)
-    x_start = ndx_to_t(i_begin, fs(dts.winput), start_time(dts.winput))
     if  decno > 0
         was_downsampled = true
         if exact
@@ -132,6 +127,24 @@ function downsamp_req(
         ys = collect(downsampler)
     end
     return (times, ys, was_downsampled)
+end
+
+function cacher_downsamp_info(
+    dts::CacheAccessor,
+    xb::Real,
+    xe::Real,
+    reqpts::Integer,
+    ::Type{T} = Int
+) where T<:Integer
+    binsize, overlap, i_begin, i_end = downsamp_req_window_info(
+        dts.winput, xb, xe, T(reqpts)
+    )
+    nbase = n_ndx(i_begin, i_end)
+
+    ncache = T(length(dts.cachearrays))
+    decno = min(floor(T, log10(binsize)), ncache)
+    x_start = ndx_to_t(i_begin, fs(dts.winput), start_time(dts.winput))
+    return (binsize, overlap, i_begin, i_end, nbase, decno, x_start)
 end
 
 start_time(ca::CacheAccessor) = start_time(ca.winput)
