@@ -32,6 +32,8 @@ function CachingStftPsd(
     )
 end
 
+basedata(csp::CachingStftPsd) = basedata(stftpsd(csp))
+
 function extrema(csp::CachingStftPsd)
     freqs = frequencies(basedata(csp.cacher.winput))
     (freqs[1], freqs[end])

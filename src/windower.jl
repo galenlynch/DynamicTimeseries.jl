@@ -104,3 +104,5 @@ function bin_bounds(a::WindowedArray, ::Type{T} = Int32) where T<:Integer
     end
     bnds
 end
+
+basedata(a::WindowedArray) = a.input

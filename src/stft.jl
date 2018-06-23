@@ -76,6 +76,8 @@ end
 
 frequencies(a::Stft) = a.frequencies
 
+basedata(a::Stft) = basedata(a.winput)
+
 function getindex(a::Stft, i::Integer)
     out = make_out(a)
     getindex!(out, a, i)
@@ -153,6 +155,7 @@ function getindex!(out, s::StftPsd, i::Integer)
 end
 
 frequencies(s::StftPsd) = frequencies(s.stft)
+basedata(s::StftPsd) = basedata(s.stft)
 
 function fft2pow!(
     dest::Vector{T}, s_fft::Vector{Complex{T}}, nfft::Integer, r::Real
