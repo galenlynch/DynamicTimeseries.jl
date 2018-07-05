@@ -30,6 +30,7 @@ export
     StftPsd,
 
     # Functions
+    basedata,
     cacheinfo,
     cache_reg,
     duration,

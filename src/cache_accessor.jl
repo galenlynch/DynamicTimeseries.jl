@@ -20,6 +20,7 @@ struct CacheAccessor{
     end
 end
 
+"Pulls parameters from inputs"
 function CacheAccessor(
     ::Type{D},
     winput::W,
@@ -94,6 +95,8 @@ function validate_cacher_dynwindow(winput::DynamicWindower)
         throw(ArgumentError("DynamicWindower must operate on last dimension"))
     end
 end
+
+basedata(a::CacheAccessor) = basedata(a.winput)
 
 function downsamp_req(
     dts::CacheAccessor{<:Any,E,D,<:Any},
