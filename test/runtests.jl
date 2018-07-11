@@ -201,19 +201,23 @@ using Base.Test
                 (xs, mm, wd) = downsamp_req(mds, 0, 1, 0)
             end
         end
+    @testset "batch" begin
+        As = [rand(200) for i in 1:10]
+        dts_arr = downsamp_batch_mmap(MaxMin, As, 10)
+    end
 end
 
-    @testset "spectrogram" begin
-        const ds = DynamicSpectrogram(A, fs, 0)
-        (t, (f, s, t_w, f_w)) = downsamp_req(ds, 0, 100, 2)
-        (t, (f, s, t_w, f_w)) = downsamp_req(ds, 0, 0, 2)
-        (t, (f, s, t_w, f_w)) = downsamp_req(ds, 0, 100, 0)
-        const ds32 = DynamicSpectrogram(C, fs, 0)
-        (t, (f, s, t_w, f_w)) = downsamp_req(ds32, 0, 100, 0)
-    end
+@testset "spectrogram" begin
+    const ds = DynamicSpectrogram(A, fs, 0)
+    (t, (f, s, t_w, f_w)) = downsamp_req(ds, 0, 100, 2)
+    (t, (f, s, t_w, f_w)) = downsamp_req(ds, 0, 0, 2)
+    (t, (f, s, t_w, f_w)) = downsamp_req(ds, 0, 100, 0)
+    const ds32 = DynamicSpectrogram(C, fs, 0)
+    (t, (f, s, t_w, f_w)) = downsamp_req(ds32, 0, 100, 0)
+end
 
-    @testset "util" begin
-        @test extent(A) == 1.0
-        @test extent([A, A]) == [1.0, 1.0]
-    end
+@testset "util" begin
+    @test extent(A) == 1.0
+    @test extent([A, A]) == [1.0, 1.0]
+end
 end

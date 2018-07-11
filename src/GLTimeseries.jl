@@ -33,9 +33,11 @@ export
     basedata,
     cacheinfo,
     cache_reg,
+    cachefiles_batch_mmap,
     duration,
     time_interval,
     downsamp_req,
+    downsamp_batch_mmap,
     extent,
     frequencies,
     getindex!,
@@ -65,5 +67,6 @@ include("caching_ts.jl")
 include("caching_averager.jl")
 include("caching_stft.jl")
 include("dynamic_stft.jl")
+include("batch.jl")
 
 end # module

@@ -11,7 +11,7 @@ function write_cache_file(
     input::AbstractArray{<:Any, N},
     autoclean::Bool = true,
     basename::AbstractString = tempname(),
-    fromcache::Bool = false,
+    fromcache::Bool = false, # Not for external use, should be false
     dim::Integer = N
 ) where {N, D<:Downsampler}
     if fromcache
