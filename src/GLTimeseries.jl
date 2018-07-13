@@ -36,11 +36,6 @@ export
     Averager,
     Stft,
     StftPsd,
-    PointProcess,
-    SimplePointProcess,
-    MarkedPointProcess,
-    VariablePointProcess,
-    SubPointProcess,
 
     # Functions
     basedata,
@@ -59,7 +54,6 @@ export
     open_cache_files,
     open_cache_file,
     parse_cache_filenames,
-    points,
     shift_extrema,
     shift_extrema!,
     write_cache_files,
@@ -83,6 +77,5 @@ include("caching_averager.jl")
 include("caching_stft.jl")
 include("dynamic_stft.jl")
 include("batch.jl")
-include("pointprocess.jl")
 
 end # module

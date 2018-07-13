@@ -12,40 +12,6 @@ using Base.Test
     const fs = 10
 
     @testset "timeseries" begin
-
-        @testset "PointProcesses" begin
-            pp_testarr = [1, 2, 3]
-            pp_notshuff_arr = [2, 1, 3]
-            interval = (0, 5)
-            SimplePointProcess(pp_notshuff_arr)
-            SimplePointProcess(pp_testarr, interval[1], interval[2])
-            SimplePointProcess(pp_testarr)
-            spp = SimplePointProcess(pp_testarr, interval)
-            @test duration(spp) == 5
-            @test count(spp) == 3
-            @test count(spp, 2, 5) == 2
-            @test points(spp) == [1, 2, 3]
-            @test all(points(spp, 0, 1) .== [1])
-
-            mag = [2, 4, 6]
-            VariablePointProcess(spp, mag)
-            mpp = VariablePointProcess(pp_testarr, mag, interval)
-            @test duration(mpp) == 5
-            @test count(mpp) == 3
-            @test count(mpp, 2, 5) == 2
-            @test points(mpp) == (pp_testarr, mag)
-            p, m = points(mpp, 2, 8)
-            @test all(p .== [2, 3])
-            @test all(m .== [4, 6])
-
-            spp = SubPointProcess(spp, (2, 5))
-            spp = SubPointProcess(spp, 2, 5)
-            @test duration(spp) == 3
-            @test count(spp) == 2
-            @test count(spp, 1, 5) == 2
-            @test all(points(spp, 1, 5) .== [2, 3])
-        end
-
         @testset "WindowedArray" begin
             wa = WindowedArray(A, 10)
             @test all(wa[1] == A[1:10])
