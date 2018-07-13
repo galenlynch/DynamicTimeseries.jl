@@ -1,7 +1,15 @@
 __precompile__()
 module GLTimeseries
 
-import Base: linearindexing, length, size, getindex, setindex!, extrema
+import Base:
+    linearindexing,
+    length,
+    size,
+    getindex,
+    setindex!,
+    extrema,
+    count
+
 import GLUtilities: bin_bounds, time_interval, duration, make_slice_idx
 
 using
@@ -28,6 +36,11 @@ export
     Averager,
     Stft,
     StftPsd,
+    PointProcess,
+    SimplePointProcess,
+    MarkedPointProcess,
+    VariablePointProcess,
+    SubPointProcess,
 
     # Functions
     basedata,
@@ -46,10 +59,12 @@ export
     open_cache_files,
     open_cache_file,
     parse_cache_filenames,
+    points,
     shift_extrema,
     shift_extrema!,
     write_cache_files,
     write_cache_file
+
 
 include("util.jl")
 include("windower.jl")
@@ -68,5 +83,6 @@ include("caching_averager.jl")
 include("caching_stft.jl")
 include("dynamic_stft.jl")
 include("batch.jl")
+include("pointprocess.jl")
 
 end # module
