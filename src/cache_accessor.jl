@@ -126,8 +126,8 @@ function downsamp_req(
         times, wa, was_downsampled = make_windowedarray(
             dts.winput, binsize, overlap, i_begin, i_end
         )
-        downsampler = D(wa)
-        ys = collect(downsampler)
+        downsampler = D(wa)::D
+        ys = collect(downsampler)::Vector{E}
     end
     return (times, ys, was_downsampled)
 end
@@ -155,18 +155,17 @@ fs(ca::CacheAccessor) = fs(ca.winput)
 baselength(ca::CacheAccessor) = baselength(ca.winput)
 
 function approximate_downsample(
-    dts::CacheAccessor{<:Any, <:Any, D, <:Any, N},
+    dts::CacheAccessor{<:Any, E, D, <:Any, N},
     binsize::T,
     i_begin::T,
     i_end::T,
     decno::T
-) where {T<:Integer, D, N}
+) where {T<:Integer, E, D, N}
     di_begin = ndx_to_dec_ndx(i_begin, decno)
     di_end = ndx_to_dec_ndx(i_end, decno)
     nsubsamp = n_ndx(di_begin, di_end)
 
-    slice_idx = make_slice_idx(N, N, di_begin:di_end)
-    cache_slice = view(dts.cachearrays[decno], slice_idx...)
+    cache_slice = view_trailing_slice(dts.cachearrays[decno], di_begin:di_end)
 
     dec_binsize = fld(binsize, T(10) ^ decno)
     wa = WindowedArray(cache_slice, dec_binsize, N)
@@ -178,7 +177,7 @@ function approximate_downsample(
     bcenters = bin_center(bbounds)
     xs = ndx_to_t(bcenters, fs(dts.winput), start_time(dts.winput))
 
-    ys = collect(D(wa))
+    ys = collect(D(wa))::Vector{E}
     return (xs, ys)
 end
 
@@ -233,16 +232,17 @@ function reduce_downsample_caches(
             contained_last = dec_ndx_lesser(i_stop, decno)
         end
 
-        slice_idx = make_slice_idx(N, N, contained_first:contained_last)
-        contained_view = view(dts.cachearrays[decno], slice_idx...)
+        contained_view = view_trailing_slice(
+            dts.cachearrays[decno], contained_first:contained_last
+        )
 
         # Reduce contained cache values
         if size(contained_view, N) > 0 # if the view is not empty
             # Reduce downsampled values from this cache level
-            reduce_weights = fill(10 ^ decno, size(contained_view, N))
+            reduce_weights = fill(10 ^ decno, size(contained_view, N))::Vector{Int}
             cached_ds[1], weights[1] = downsamp_reduce_cache(
                 D_concrete, contained_view, reduce_weights
-            )
+            )::Tuple{E, Int}
             extrema_i = 2 # advance cached_ds index
             remainder_left_stop = dec_ndx_2_base_start(contained_first, decno) - 1
             remainder_right_start = dec_ndx_2_base_end(contained_last, decno) + 1
@@ -286,12 +286,12 @@ function reduce_downsample_caches(
     else # We're at the base level
         slice_idx = make_slice_idx(M, dts.winput.dim, i_start:i_stop)
         baseview = view(basedata(dts.winput), slice_idx...)
-        reduce_weights = fill(1, size(baseview, dts.winput.dim))
+        reduce_weights = fill(1, size(baseview, dts.winput.dim))::Vector{Int}
         out, weight = downsamp_reduce(
             D_concrete, baseview, reduce_weights, dts.winput.dim
         )
     end
-    return out, weight
+    return out::E, weight
 end
 
 function write_cache_contents(io::IO, ds::Downsampler)

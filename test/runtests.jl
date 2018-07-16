@@ -1,5 +1,7 @@
-using GLTimeseries
+using GLTimeseries, PointProcesses
 using Base.Test
+
+srand(1)
 
 @testset "GLTimeseries"  begin
 
@@ -10,6 +12,20 @@ using Base.Test
     A[1:2:end] = 2
 
     const fs = 10
+
+    @testset "point_downsampler" begin
+
+        x_raw = rand(200)
+        pt_raw = rand(200)
+        p = VariablePoints(x_raw, pt_raw)
+        dps = DynamicPointDownsampler(p)
+        xs, ys, wd = downsamp_req(dps, 0, 1, 20)
+
+        dpb = DynamicPointBoxer(dps, 2, 0)
+        dpb2 = DynamicPointBoxer(p, 2, 0)
+        xs, ys, wd = downsamp_req(dpb, 0, 1, 20)
+
+    end
 
     @testset "timeseries" begin
         @testset "WindowedArray" begin

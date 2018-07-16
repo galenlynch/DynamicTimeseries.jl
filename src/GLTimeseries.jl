@@ -14,7 +14,8 @@ import GLUtilities: bin_bounds, time_interval, duration, make_slice_idx
 
 using
     GLUtilities,
-    DSP
+    DSP,
+    PointProcesses
 
 export
     # Constants
@@ -36,6 +37,9 @@ export
     Averager,
     Stft,
     StftPsd,
+    PointMerger,
+    DynamicPointDownsampler,
+    DynamicPointBoxer,
 
     # Functions
     basedata,
@@ -54,6 +58,7 @@ export
     open_cache_files,
     open_cache_file,
     parse_cache_filenames,
+    point_averager,
     shift_extrema,
     shift_extrema!,
     write_cache_files,
@@ -77,5 +82,6 @@ include("caching_averager.jl")
 include("caching_stft.jl")
 include("dynamic_stft.jl")
 include("batch.jl")
+include("point_downsampler.jl")
 
 end # module
