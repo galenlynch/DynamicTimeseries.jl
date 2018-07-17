@@ -10,7 +10,6 @@ struct CacheAccessor{
         cachearrays::Vector{Array{S,N}},
         cachepaths::Vector{String}
     ) where {W<:DynamicWindower,E,D<:Downsampler,S<:Number,N}
-        validate_cacher_dynwindow(winput)
         validate_cache_arrays(
             cachepaths,
             cachearrays,
@@ -42,15 +41,13 @@ function CacheAccessor(
     ::Type{D},
     winput::DynamicWindower,
     ::Type{E},
-    cachedims::AbstractVector{<:NTuple{N, <:Integer}},
+    cachedims::AbstractVector{<:NTuple{<:Any, <:Integer}},
     cachepaths::AbstractVector{<:AbstractString},
     autoclean::Bool = true;
     checkfiles::Bool = true
-) where {N, D<:Downsampler, E<:Number}
+) where {D<:Downsampler, E<:Number}
     if checkfiles
-        cachepaths, cachedims = sort_cache_files(
-            cachepaths, cachedims, N
-        )
+        cachepaths, cachedims = sort_cache_files(cachepaths, cachedims)
     end
     cachearrays = open_cache_files(
         E, cachedims, cachepaths, autoclean
@@ -65,7 +62,7 @@ function CacheAccessor(
     autoclean::Bool = true
 ) where {D<:Downsampler}
     (cachepaths, E, cachedims) = write_cache_files(
-        D, basedata(winput), sizehint, autoclean, winput.dim
+        D, basedata(winput), sizehint, autoclean
     )
     CacheAccessor(
         D, winput, E, cachedims, cachepaths, false; checkfiles=false
@@ -74,26 +71,20 @@ end
 
 function CacheAccessor(
     ::Type{D},
-    input::AbstractArray{<:Any, N},
+    input::AbstractArray,
     fs::Real,
     offset::Real = 0,
     args...;
     f_overlap::Real = 0,
     wmin::Integer = 1,
     kwargs...
-) where {N, D<:Downsampler}
+) where {D<:Downsampler}
     CacheAccessor(
         D,
-        DynamicWindower(input, fs, offset, N, f_overlap, wmin),
+        DynamicWindower(input, fs, offset, f_overlap, wmin),
         args...;
         kwargs...
     )
-end
-
-function validate_cacher_dynwindow(winput::DynamicWindower)
-    if winput.dim != ndims(basedata(winput))
-        throw(ArgumentError("DynamicWindower must operate on last dimension"))
-    end
 end
 
 basedata(a::CacheAccessor) = basedata(a.winput)
@@ -168,7 +159,7 @@ function approximate_downsample(
     cache_slice = view_trailing_slice(dts.cachearrays[decno], di_begin:di_end)
 
     dec_binsize = fld(binsize, T(10) ^ decno)
-    wa = WindowedArray(cache_slice, dec_binsize, N)
+    wa = WindowedArray(cache_slice, dec_binsize)
 
     bbounds = bin_bounds(wa, T)
     for (i, bpair) in enumerate(bbounds)
@@ -284,11 +275,10 @@ function reduce_downsample_caches(
 
         out, weight = downsamp_reduce_cache(D_concrete, cached_ds, weights)
     else # We're at the base level
-        slice_idx = make_slice_idx(M, dts.winput.dim, i_start:i_stop)
-        baseview = view(basedata(dts.winput), slice_idx...)
-        reduce_weights = fill(1, size(baseview, dts.winput.dim))::Vector{Int}
+        baseview = view_trailing_slice(basedata(dts.winput), i_start:i_stop)
+        reduce_weights = fill(1, size(baseview))::Vector{Int}
         out, weight = downsamp_reduce(
-            D_concrete, baseview, reduce_weights, dts.winput.dim
+            D_concrete, baseview, reduce_weights
         )
     end
     return out::E, weight

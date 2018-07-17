@@ -30,7 +30,7 @@ function MaxMin(a::W) where
 end
 
 function MaxMin(input::AbstractArray{<:Number, 2}, binsize::Integer)
-    winput = WindowedArray(input, binsize, 2)
+    winput = WindowedArray(input, binsize)
     MaxMin(winput)
 end
 function MaxMin(input::AbstractVector, binsize::Integer)
@@ -79,7 +79,7 @@ end
 downsamp_reduce(::Type{<:MaxMin}, ds::AbstractVector{<:Number}) = extrema_red(ds)
 
 function downsamp_reduce(
-    ::Type{D}, ds::AbstractArray, ::AbstractVector, ::Integer = 0
+    ::Type{D}, ds::AbstractArray, ::AbstractVector
 ) where D<:MaxMin
     return (downsamp_reduce(D, ds), 0)
 end

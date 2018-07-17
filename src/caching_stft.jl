@@ -1,15 +1,11 @@
-struct CachingStftPsd{C<:CacheAccessor} <: AbstractDynamicSpectrogram{Float64}
+struct CachingStftPsd{C<:CacheAccessor{
+    <:DynamicWindower{<:Any, <:Any, <:Any, <:StftPsd},
+    <:Any, <:Any, <:Any, <:Any
+}} <: AbstractDynamicSpectrogram{Float64}
     cacher::C
     fwidth::Float64
     base_offset::Float64
-    function CachingStftPsd{C}(ca::C) where
-        {
-            C<:CacheAccessor{
-                <:DynamicWindower{<:Any, <:Any, <:Any, <:StftPsd},
-                <:Any, <:Any, <:Any, <:Any
-            }
-        }
-
+    function CachingStftPsd{C}(ca::C) where {C<:CacheAccessor}
         sp = basedata(ca.winput)
         base_offset = ca.winput.offset  - (sp.stft.winput.binsize / sp.stft.fs)
         freqs = frequencies(sp)
@@ -31,13 +27,20 @@ function CachingStftPsd(
 end
 
 function CachingStftPsd(
-    input::AbstractVector{<:Number}, binsize::Integer, fs::Real, args...;
-    winfun::Function = blackman, kwargs...
+    input::AbstractVector{<:Number},
+    binsize::Integer,
+    fs::Real,
+    overlap::Number = 0,
+    winfun::Function = blackman,
+    args...;
+    kwargs...
 )
     CachingStftPsd(
-        StftPsd(input, binsize, fs; winfun = winfun), args...; kwargs...
+        StftPsd(input, binsize, fs, overlap, winfun), args...; kwargs...
     )
 end
+
+cache_accessor(a::CachingStftPsd{C}) where C = a.cacher::C
 
 stftpsd(csp::CachingStftPsd) = basedata(csp.cacher.winput)
 frequencies(csp::CachingStftPsd) = frequencies(stftpsd(csp))

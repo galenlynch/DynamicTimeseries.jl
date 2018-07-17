@@ -1,4 +1,4 @@
-function prepare_cachefile(::Type{<:MaxMin}, input::AbstractArray, dim::Integer = 1)
+function prepare_cachefile(::Type{<:MaxMin}, input::AbstractArray)
     mm = MaxMin(input, 10)
     npair = length(mm)
     cachedims = (2, npair)

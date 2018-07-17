@@ -2,6 +2,7 @@ __precompile__()
 module GLTimeseries
 
 import Base:
+    copy!,
     linearindexing,
     length,
     size,
@@ -10,12 +11,13 @@ import Base:
     extrema,
     count
 
-import GLUtilities: bin_bounds, time_interval, duration, make_slice_idx
+import GLUtilities: bin_bounds, time_interval, duration
 
 using
     GLUtilities,
     DSP,
-    PointProcesses
+    PointProcesses,
+    Missings
 
 export
     # Constants

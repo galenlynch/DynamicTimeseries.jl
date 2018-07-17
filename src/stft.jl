@@ -47,7 +47,7 @@ struct Stft{
 end
 
 function Stft(
-    winput::W, plan::P, fs::Real; winfun::Function = blackman
+    winput::W, plan::P, fs::Real, winfun::Function = blackman
 ) where {W<:WindowedArray{<:Any, <:Any, 1, <:Any}, P<:Base.DFT.Plan}
     Stft{Vector{Complex{Float64}}, W, P}(
         winput, plan, convert(Float64, fs), winfun
@@ -55,24 +55,25 @@ function Stft(
 end
 
 function Stft(
-    winput::W, fs::Real = 1, args...; kwargs...
+    winput::W, fs::Real = 1, args...
 ) where W<:WindowedArray{<:Any, <:Any, 1, <:Any}
     nfft = nextfastfft(winput.binsize)
     plan = plan_rfft(Vector{Float64}(nfft))
-    Stft(winput, plan, fs, args...; kwargs...)
+    Stft(winput, plan, fs, args...)
 end
 
 function Stft(
     input::AbstractVector,
     binsize::Integer,
     fs::Real,
-    args...;
     overlap::Integer = 0,
-    kwargs...
+    args...
 )
-    winput = WindowedArray(input, binsize, 1, overlap)
-    Stft(winput, fs, args...; kwargs...)
+    winput = WindowedArray(input, binsize, overlap)
+    Stft(winput, fs, args...)
 end
+
+elsize(a::Stft) = (a.nout,)
 
 frequencies(a::Stft) = a.frequencies
 
@@ -137,21 +138,22 @@ bin_bounds(a::Stft, args...) = bin_bounds(a.winput, args...)
 bin_bounds(i::Integer, a::Stft) = bin_bounds(i, a.winput)
 
 struct StftPsd{E, S<:Stft} <: Downsampler{E, 1}
-    stft::Stft
+    stft::S
     fftbuf::Vector{Complex{Float64}}
-    function StftPsd{E, S}(stft::Stft) where {E, S<:Stft}
+    function StftPsd{E, S}(stft::S) where {E, S<:Stft}
         fftbuf = make_out(stft)
         new(stft, fftbuf)
     end
 end
 StftPsd(stft::S) where S<:Stft = StftPsd{Vector{Float64}, S}(stft)
-StftPsd(args...; kwargs...) = StftPsd(Stft(args...; kwargs...))
+StftPsd(args...) = StftPsd(Stft(args...))
 
 make_out(a::StftPsd) = Vector{Float64}(a.stft.nout)
 
 function getindex(s::StftPsd, i::Integer)
     dest = make_out(s)
     getindex_unsafe!(dest, s, i)
+    dest
 end
 
 function getindex!(out, s::StftPsd, i::Integer)
@@ -161,37 +163,69 @@ function getindex!(out, s::StftPsd, i::Integer)
     getindex_unsafe!(out, s, i)
 end
 
-function getindex_unsafe!(out, s::StftPsd, i::Integer)
+function copy!(
+    out::AbstractArray,
+    s::StftPsd,
+    out_off::Integer = 1,
+    s_off::Integer = 1,
+    n_ndx::Integer = n_ndx(s_off, length(s))
+)
+    out_off > 0 && s_off > 0 || throw(ArgumentError("Invalid indices"))
+    n_total = n_ndx * s.stft.nout
+    rel_offset = (s_off - 1) * s.stft.nout + 1
+    rel_len = length(s) * s.stft.nout
+    if ! copy_length_check(length(out), rel_len, out_off, rel_offset, n_total)
+        throw(ArgumentError("Destination is not large enough for copy!"))
+    end
+    cur_offset = out_off
+    for i = 0:(n_ndx - 1)
+        @inbounds getindex_unsafe!(out, s, s_off + i, cur_offset)
+        cur_offset = cur_offset + s.stft.nout
+    end
+    out
+end
+
+function getindex_unsafe!(out, s::StftPsd, i::Integer, d_off::Integer = 1)
     getindex!(s.fftbuf, s.stft, i) # Does a bounds check
-    fft2pow_unsafe!(out, s.fftbuf, s.stft.nfft, s.stft.r_temp[1], s.stft.nout)
+    fft2pow_unsafe!(
+        out, s.fftbuf, s.stft.nfft, s.stft.r_temp[1], d_off, s.stft.nout
+    )
 end
 
 frequencies(s::StftPsd) = frequencies(s.stft)
 basedata(s::StftPsd) = basedata(s.stft)
+elsize(a::StftPsd) = elsize(a.stft)
 
-function fft2pow!(dest::AbstractVector, s_fft::AbstractVector, nfft::Integer, r::Real)
+function fft2pow!(
+    dest::AbstractVector,
+    s_fft::AbstractVector,
+    nfft::Integer,
+    r::Real,
+    d_offset::Integer = 1
+)
     n = length(s_fft)
     if ! copy_length_check(length(dest), n)
         throw(ArgumentError("dest must be at least as long as s_fft"))
     end
-    fft2pow_unsafe!(dest, s_fft, nfft, r, n)
+    fft2pow_unsafe!(dest, s_fft, nfft, r, d_offset, n)
 end
 
 function fft2pow_unsafe!(
-    dest::AbstractVector{T},
+    dest::AbstractArray{T, <:Any},
     s_fft::AbstractVector{Complex{T}},
     nfft::Integer,
     r::Real,
+    d_offset::Integer = 1,
     n::Integer = length(s_fft)
 ) where T
     m1 = convert(T, 1/r)
     m2 = 2 * m1
-    @inbounds dest[1] = m1 * abs2(s_fft[1])
-    @simd for i = 2:(n - 1)
-        @inbounds dest[i] = m2 * abs2(s_fft[i])
+    @inbounds dest[d_offset] = m1 * abs2(s_fft[1])
+    @simd for i = 1:(n - 2)
+        @inbounds dest[d_offset + i] = m2 * abs2(s_fft[i])
     end
-    @inbounds dest[n] = ifelse(iseven(nfft), m1, m2) * abs2(s_fft[n])
-    dest
+    @inbounds dest[d_offset + n - 1] = ifelse(iseven(nfft), m1, m2) * abs2(s_fft[n])
+    nothing
 end
 
 function concrete_type(::Type{<:StftPsd}, ::Type{W}) where {W<:WindowedArray}

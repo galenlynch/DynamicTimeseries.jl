@@ -2,19 +2,17 @@ struct DynamicWindower{E,T,N,A<:AbstractArray{T,N}} <: AbstractDynamicDownsample
     input::A
     fs::Float64
     offset::Float64
-    dim::Int
     f_overlap::Float64
     wmin::Int
     function DynamicWindower{E,T,N,A}(
         input::A,
         fs::Float64,
         offset::Float64 = 0.0,
-        dim::Int = 1,
         f_overlap::Float64 = 0.0,
         wmin::Int = 1
     ) where {E,T,N,A<:AbstractArray{T,N}}
-        validate_dynamic_windower_args(dim, N, f_overlap, wmin, fs)
-        return new(input, fs, offset, dim, f_overlap, wmin)
+        validate_dynamic_windower_args(N, f_overlap, wmin, fs)
+        return new(input, fs, offset, f_overlap, wmin)
     end
 end
 
@@ -22,33 +20,24 @@ function DynamicWindower(
     input::A,
     fs::Real,
     offset::Real = 0,
-    dim::Integer = 1,
     f_overlap::Real = 0,
     wmin::Integer = 1
 ) where {T,N,A<:AbstractArray{T,N}}
-    if dim < 1 || dim > N
-        throw(ArgumentError("dimension is $dim which is not between 1 and $N"))
-    end
-    si = make_slice_idx(N, dim, 1:1)
-    v = view(input, si...)
+    v = view_trailing_slice(input, 1:1)
     return DynamicWindower{typeof(v),T,N,A}(
         input,
         convert(Float64, fs),
         convert(Float64, offset),
-        convert(Int, dim),
         convert(Float64, f_overlap),
         convert(Int, wmin)
     )
 end
 
 function validate_dynamic_windower_args(
-    dim::Integer, N::Integer, f_overlap::AbstractFloat, wmin::Integer, fs::Real
+    N::Integer, f_overlap::AbstractFloat, wmin::Integer, fs::Real
 )
     if fs <= 0
         throw(ArgumentError("fs must be greater than zero"))
-    end
-    if dim < 1 || dim > N
-        throw(ArgumentError("dim $dim does not match input with $N dimensions"))
     end
     if f_overlap < 0 || f_overlap >= 1
         throw(ArgumentError(
@@ -83,12 +72,12 @@ function downsamp_req(
     make_windowedarray(ds, win_l, overlap, ib_ex, ie_ex)
 end
 
+#TODO type unstable in a bad way
 function make_windowedarray(
     ds::DynamicWindower{<:Any,<:Any,N,<:Any}, win_l, overlap, ib_ex, ie_ex
 ) where {N}
-    slice_idx = make_slice_idx(N, ds.dim, ib_ex:ie_ex)
-    v = view(ds.input, slice_idx...)
-    wa = WindowedArray(v, win_l, ds.dim, overlap)
+    v = view_trailing_slice(ds.input, ib_ex:ie_ex)
+    wa = WindowedArray(v, win_l, overlap)
 
     first_t = ndx_to_t(ib_ex, fs(ds), ds.offset)
     times = ndx_to_t(bin_center(bin_bounds(wa)), fs(ds), first_t)

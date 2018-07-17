@@ -11,13 +11,12 @@ function write_cache_file(
     input::AbstractArray{<:Any, N},
     autoclean::Bool = true,
     basename::AbstractString = tempname(),
-    fromcache::Bool = false, # Not for external use, should be false
-    dim::Integer = N
+    fromcache::Bool = false # Not for external use, should be false
 ) where {N, D<:Downsampler}
     if fromcache
-        (cachedims, cachedata) = prepare_next_cachefile(D, input, dim)
+        (cachedims, cachedata) = prepare_next_cachefile(D, input)
     else
-        (cachedims, cachedata) = prepare_cachefile(D, input, dim)
+        (cachedims, cachedata) = prepare_cachefile(D, input)
     end
     ndim = length(cachedims)
     dim_els = Vector{String}(ndim + 1)
@@ -44,8 +43,7 @@ function write_cache_files(
     ::Type{D},
     input::A,
     sizehint::Integer,
-    autoclean::Bool = true,
-    dim::Integer = 1;
+    autoclean::Bool = true;
     fid::Integer = -1,
     cachedir::AbstractString = tempdir()
 )where {D<:Downsampler, A<:AbstractArray}
@@ -71,7 +69,7 @@ function write_cache_files(
         # Make first cache file
         dname = basename * "_1"
         (cachepaths[1], cachedim) = write_cache_file(
-            D, input, autoclean, dname, false, dim
+            D, input, autoclean, dname, false
         )
         cachedims = Vector{typeof(cachedim)}(ndecade)
         cachedims[1] = cachedim
@@ -116,7 +114,7 @@ function write_cache_files(
     cachedir::AbstractString = tempdir()
 ) where D <: Downsampler
     write_cache_files(
-        D, basedata(winput), sizehint, autoclean, winput.dim;
+        D, basedata(winput), sizehint, autoclean;
         fid = fid, cachedir = cachedir
     )
 end
@@ -194,7 +192,6 @@ function validate_cache_arrays(
     cachepaths::AbstractVector{<:AbstractString},
     cachearrays::AbstractVector{<:AbstractArray{<:Any, N}},
     baselength::Integer,
-    dim::Integer = N,
     dec_factor::Integer = 10
 ) where N
     ncache = length(cachepaths)
@@ -205,7 +202,7 @@ function validate_cache_arrays(
     end
     last_len = baselength
     for carr in cachearrays
-        l = size(carr, dim)
+        l = size(carr, N)
         if cld(last_len, l) != dec_factor
             throw(ArgumentError(
                 "Cache arrays are not decreasing in size by a factor of $dec_factor"
@@ -218,12 +215,11 @@ end
 function sort_cache_files(
     cachepaths::AbstractVector{<:AbstractString},
     cachedims::AbstractVector{<:NTuple{N, <:Integer}},
-    dim::Integer
 ) where {N}
     nf = length(cachepaths)
     cachelengths = Vector{Int}(nf)
     for (i, dims) in enumerate(cachedims)
-        cachelengths[i] = dims[dim]
+        cachelengths[i] = dims[N]
     end
     p = sortperm(cachelengths; rev=true)
     sorted_cachedims = cachedims[p]

@@ -1,11 +1,10 @@
 function prepare_cachefile(
     ::Type{A},
     input::AbstractArray{<:Any, N},
-    dim::Integer = N,
     reduce_dim::Bool = def_reduce(N)
 ) where {A<:Averager, N}
-    ds = Averager(input, 10, dim)
-    el_dims = el_size(A, input, dim, reduce_dim)
+    ds = Averager(input, 10)
+    el_dims = el_size(A, input, N, reduce_dim)
 
     ds_len = length(ds)
     if isempty(el_dims)

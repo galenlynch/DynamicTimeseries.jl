@@ -5,12 +5,11 @@ struct Averager{E,W<:WindowedArray,D} <: Downsampler{E,1}
         winput::W
     ) where {E,T,N,W<:WindowedArray{<:Any,T,N,<:Any}, D}
         isa(D, Bool) || throw(ArgumentError{"parameter D must be true or false"})
-        S = div_type(T)
-        exp_type = D ? S : Array{S,N}
+        exp_type = eltype_preview(Averager, T, N, D)
         if E != exp_type
-            throw(ArgumentError(
+            throw(ArgumentError(string(
                 "Expected element type ", E, " but got ", exp_type
-            ))
+            )))
         end
         new(winput)
     end
@@ -19,8 +18,7 @@ end
 function Averager(
     winput::W, reduce_dim::Bool = def_reduce(N)
 ) where {T,N,W<:WindowedArray{<:Any,T,N,<:Any}}
-    S = div_type(T)
-    E = reduce_dim ? S : Array{S,N}
+    E = eltype_preview(Averager, T, N, reduce_dim)
     Averager{E,W,reduce_dim}(winput)
 end
 
@@ -29,11 +27,10 @@ def_reduce(N::Integer) = N > 1 ? false : true
 function Averager(
     input::AbstractArray,
     binsize::Integer,
-    dim::Integer = 1,
     overlap::Integer=0,
     args...
 )
-    winput = WindowedArray(input, binsize, dim, overlap)
+    winput = WindowedArray(input, binsize, overlap)
     Averager(winput, args...)
 end
 
@@ -51,7 +48,7 @@ function eltype_preview(
     ::Type{<:Averager}, ::Type{T}, N::Integer, reduce_dim::Bool = def_reduce(N)
 ) where {T}
     S = div_type(T)
-    reduce_dim ? S : Array{S,N}
+    reduce_dim ? S : Array{S, N - 1}
 end
 
 function eltype_preview(
@@ -138,11 +135,18 @@ end
 
 "Method meant for when N > 1 in WindowedArray"
 function getindex(
-    a::Averager{E, <:WindowedArray, false}, i::Integer
-) where E
+    a::Averager{E, <:WindowedArray{<:Any, <:Any, N, <:Any}, false}, i::Integer
+) where {E, N}
     v = a.winput[i]
-    mean(v, a.winput.dim)::E
+    squeeze(mean(v, N), N)::E
 end
+"Method meant for when N > 1 in WindowedArray"
+function getindex(
+    a::Averager{E, <:WindowedArray{<:Any, <:Any, 1, <:Any}, false}, i::Integer
+) where {E}
+    mean(a.winput[i])::E
+end
+
 setindex!(::Averager, ::Integer) = throw(ReadOnlyMemoryError())
 
 Base.IndexStyle(::Type{T}) where {W,T<:Averager{<:Any,W}} = IndexStyle(W)
@@ -155,9 +159,8 @@ function downsamp_reduce(
     ::Type{<:Averager{<:Any, <:Any, false}},
     ds::AbstractArray{<:Any, N},
     weigths::AbstractVector{<:Number},
-    dim::Integer = N
 ) where {N}
-    if size(ds, dim) != length(weights)
+    if size(ds, N) != length(weights)
         throw(ArgumentError(string(
         "ds (size $(size(ds))) ",
         "and weights (size $(size(weights))) ",
@@ -165,7 +168,7 @@ function downsamp_reduce(
         )))
     end
     total_weight = sum(weights)
-    reduced = weighted_mean_dim(ds, weights, dim, total_weight)
+    reduced = weighted_mean_dim(ds, weights, N, total_weight)
     return (reduced, total_weight)
 end
 

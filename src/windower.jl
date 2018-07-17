@@ -1,15 +1,14 @@
 struct WindowedArray{E,T,N,A<:AbstractArray{T,N}}<: AbstractArray{E,1}
     input::A
-    dim::Int
     binsize::Int
     overlap::Int
     len::Int
     input_len::Int
     function WindowedArray{E,T,N,A}(
-        input::A, binsize::Int, dim::Int = 1, overlap::Int = 0
+        input::A, binsize::Int, overlap::Int = 0
     ) where {E<:SubArray,T,N,A<:AbstractArray{T,N}}
-        validate_windower_args(size(input), dim, binsize, overlap)
-        input_len = size(input, dim)
+        validate_windower_args(size(input), binsize, overlap)
+        input_len = size(input, N)
         # number of windows in signal
         # let N:= length of input
         # l := length of window
@@ -19,37 +18,26 @@ struct WindowedArray{E,T,N,A<:AbstractArray{T,N}}<: AbstractArray{E,1}
         # So N = wl - wd + d = w(l-d) + d
         # w = (N - d) / (l - d)
         len = cld(input_len - overlap, binsize - overlap)
-        return new(input, dim, binsize, overlap, len, input_len)
+        return new(input, binsize, overlap, len, input_len)
     end
 end
 
 function WindowedArray(
-    input::A, binsize::Integer, dim::Integer = 1, overlap::Integer = 0
+    input::A, binsize::Integer, overlap::Integer = 0
 ) where {T,N,A<:AbstractArray{T,N}}
     # make fake slice to determine SubArray type
-    if dim < 1 || dim > N
-        throw(ArgumentError("dimension out of bounds"))
-    end
-    si = make_slice_idx(N, dim, 1:0) # Empty slice to determine SubArray type
-    v = view(input, si...)
+    v = view_trailing_slice(input, 1:0)
     WindowedArray{typeof(v),T,N,A}(
         input,
         convert(Int, binsize),
-        convert(Int, dim),
         convert(Int, overlap)
     )
 end
 
 function validate_windower_args(
-    input_dims::NTuple{N,<:Integer}, dim::Integer, binsize::Integer, overlap::Integer
+    input_dims::NTuple{N,<:Integer}, binsize::Integer, overlap::Integer
 ) where N
-    if dim < 1 || dim > N
-        throw(ArgumentError(string(
-            "dim is ", dim,
-            " but it must be between 1 and the dimension of the input, ", N
-        )))
-    end
-    input_len  = input_dims[dim]
+    input_len  = input_dims[N]
     if binsize < 1 || (input_len > 0 && binsize > input_len)
         throw(ArgumentError(string(
             "binsize is ", binsize,
@@ -78,16 +66,7 @@ end
 
 function sliceview(a::WindowedArray, i::Integer)
     (bb, be) = bin_bounds(i, a)
-    idxes = make_slice_idx(a, bb, be)
-    view(a.input, idxes...)
-end
-
-function make_slice_idx(a::WindowedArray{<:Any,<:Any,N,<:Any}, idx)  where N
-    make_slice_idx(N, a.dim, idx)
-end
-
-function make_slice_idx(a::WindowedArray, bb::T, be::T) where T<:Integer
-    make_slice_idx(a, bb:be)
+    view_trailing_slice(a.input, bb:be)
 end
 
 function bin_bounds(i::T, a::WindowedArray) where {T<:Integer}

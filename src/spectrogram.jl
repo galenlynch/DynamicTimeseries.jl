@@ -32,7 +32,7 @@ function DynamicSpectrogram(
     winfun::Function = blackman
 ) where {T<:Real, A<:AbstractVector{T}}
     DynamicSpectrogram(
-        DynamicWindower(input, fs, offset, 1, overlap, min_window),
+        DynamicWindower(input, fs, offset, overlap, min_window),
         winfun
     )
 end
