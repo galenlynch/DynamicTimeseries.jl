@@ -47,7 +47,8 @@ function DynCachingStftPsd(
     winfun = ismissing(winfun) ? blackman : winfun
     DynCachingStftPsd(
         CachingStftPsd(
-            input, binsize, fs, 0, winfun, base_offset, args...; kwargs...
+            input, binsize, fs, 0, winfun, base_offset, args...;
+            kwargs...
         ),
         f_overlap
     )

@@ -160,14 +160,9 @@ fs(::DynamicPointBoxer) = error("Not Implemented")
 baselength(::DynamicPointBoxer) = error("Not Implemented")
 
 function extrema(dp::DynamicPointBoxer{<:Any, PtRangeT, <:Any, <:Any}) where {PtRangeT}
-    heightmin = typemax(PtRangeT)
-    heightmax = typemin(PtRangeT)
     _, heights = point_values(basepoints(dp))
-    for height in heights
-        heightmin = min(height, heightmin)
-        heightmax = max(height, heightmax)
-    end
-    (heightmin + dp.y_center, heightmax + dp.y_center)
+    half_height = maximum(heights) / 2
+    (dp.y_center - half_height, dp.y_center + half_height)
 end
 
 start_time(dp::DynamicPointBoxer) = start_time(dp.pointdownsampler)
