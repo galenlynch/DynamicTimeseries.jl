@@ -56,9 +56,21 @@ function write_cache_files(
             ))
         end
         basestr = string(GL_CACHEPREFIX, '_', fid, '_', input_eltype)
-        basename = joinpath(cachedir, basestr)
+        base_prefix = joinpath(cachedir, basestr)
     else
-        basename = string(tempname(), '_', input_eltype)
+        if isdir(cachedir)
+            base_prefix = joinpath(cachedir, basename(tempname()))
+        else
+            warn(
+                "Cache directory ",
+                cachedir,
+                " cannot be accessed, using ",
+                tempdir(),
+                " instead"
+            )
+            base_prefix = tempname()
+        end
+        base_prefix = string(base_prefix, '_', input_eltype)
     end
     E = arr_eltype_preview(D, A)
     if sizehint < nsamp
@@ -67,7 +79,7 @@ function write_cache_files(
         cachepaths = Vector{String}(ndecade)
 
         # Make first cache file
-        dname = basename * "_1"
+        dname = base_prefix * "_1"
         (cachepaths[1], cachedim) = write_cache_file(
             D, input, autoclean, dname, false
         )
@@ -76,7 +88,7 @@ function write_cache_files(
         cachearr = open_cache_file(E, cachedims[1], cachepaths[1])
         # Make subsequent cache files
         for dno = 2:ndecade
-            dname = string(basename, '_', dno)
+            dname = string(base_prefix, '_', dno)
             try
                 tmp_path, tmp_dims = write_cache_file(
                     D, cachearr, autoclean, dname, true

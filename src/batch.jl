@@ -5,7 +5,8 @@ function downsamp_batch_mmap(
     fss::Union{<:Real, AbstractVector{<:Real}},
     offbytes::Union{<:Integer, AbstractVector{<:Integer}} = 0,
     t_offsets::AbstractVector{<:Real} = Int[],
-    sizehint::Integer = 70
+    sizehint::Integer = 70;
+    cachedir::AbstractString = tempdir()
 ) where {DownsamplerType<:Downsampler}
     t_offs = isempty(t_offsets) ? zeros(Int, length(arrs)) : t_offsets
     samplerates = isa(fss, Real) ? fill(fss, length(arrs)) : fss
@@ -13,12 +14,19 @@ function downsamp_batch_mmap(
     mmap_types = typeof.(arrs)
     mmap_sizes = size.(arrs)
     cpaths, ctypes, cdims = cachefiles_batch_mmap(
-        DownsamplerType, paths, mmap_types, mmap_sizes, mm_offs, sizehint
+        DownsamplerType,
+        paths,
+        mmap_types,
+        mmap_sizes,
+        mm_offs,
+        sizehint,
+        cachedir
     )
     CacheAccessor.(
         DownsamplerType, arrs, samplerates, t_offs, ctypes, cdims, cpaths, true
     )
 end
+
 function downsamp_batch_mmap(
     ::Type{DownsamplerType}, # downsampler type
     arrs::AbstractVector{<:AbstractArray},
@@ -55,14 +63,16 @@ function cachefiles_batch_mmap(
     mmap_types::AbstractVector{DataType},
     mmap_sizes::AbstractVector{<:NTuple{<:Any, <:Integer}},
     offbs::AbstractVector{<:Integer},
-    sizehint::Integer
+    sizehint::Integer,
+    cachedir::AbstractString = tempdir(),
+    autoclean::Bool = true
 ) where {DownsamplerType<:Downsampler}
     np = length(paths)
     np > 0 || throw(ArgumentError("Paths cannot be empty"))
 
     outs = pmap(
         (p, mt, ms, ob) -> cachefiles_mmap_remote(
-            DownsamplerType, p, mt, ms, ob, sizehint
+            DownsamplerType, p, mt, ms, ob, sizehint, cachedir
         ),
         paths, mmap_types, mmap_sizes, offbs
     )
@@ -73,6 +83,7 @@ function cachefiles_batch_mmap(
     csizes = Vector{typeof(outs[1][3])}(np)
     for (i, (cp, ct, cs)) in enumerate(outs)
         cpaths[i] = cp
+        autoclean && atexit(() -> rm.(cp))
         ctypes[i] = ct
         csizes[i] = cs
     end
@@ -86,10 +97,11 @@ function cachefiles_mmap_remote(
     ::Type{MmapType},
     mmap_size::NTuple{<:Any, <:Integer},
     offbytes::Integer,
-    sizehint::Integer
+    sizehint::Integer,
+    cachedir::AbstractString = tempdir()
 ) where {DownsamplerType <: Downsampler, MmapType <: AbstractArray}
     arr = open(path, "r") do io
         Mmap.mmap(io, MmapType, mmap_size, offbytes)
     end
-    write_cache_files(DownsamplerType, arr, sizehint)
+    write_cache_files(DownsamplerType, arr, sizehint, false; cachedir = cachedir)
 end
