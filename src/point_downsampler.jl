@@ -86,11 +86,8 @@ time_interval(dp::DynamicPointDownsampler) = time_interval(dp.points)
 duration(dp::DynamicPointDownsampler) = duration(dp.points)
 
 function downsamp_req(
-    dp::DynamicPointDownsampler, xb, xe, npt
+    dp::DynamicPointDownsampler, xb, xe, resolution
 )
-    xb <= xe || throw(ArgumentError("xb and xe not well ordered"))
-    xr = xe - xb
-    resolution = xr / npt
     merged = merge_points(dp.merger, dp.points, xb, xe, resolution)
     (point_values(merged)..., true)
 end
@@ -134,11 +131,11 @@ end
 basepoints(dp::DynamicPointBoxer) = basepoints(dp.pointdownsampler)
 
 function downsamp_req(
-    dp::DynamicPointBoxer{PtDomainT, PtRangeT, <:Any, <:Any}, xb, xe, npt
+    dp::DynamicPointBoxer{PtDomainT, PtRangeT, <:Any, <:Any}, xb, xe, res
 ) where {PtDomainT, PtRangeT}
     # ptvals will start as center points for the box,
     # but I will make it the left point inplace
-    ptvals, marks, _ = downsamp_req(dp.pointdownsampler, xb, xe, npt)
+    ptvals, marks, _ = downsamp_req(dp.pointdownsampler, xb, xe, res)
     npt = length(ptvals)
     heights = Vector{PtRangeT}(npt)
     bottoms = similar(heights)
