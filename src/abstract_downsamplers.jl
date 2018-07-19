@@ -22,12 +22,6 @@ start_time
 """
 abstract type AbstractDynamicDownsampler{E} end
 
-function downsamp_req(
-    ds::AbstractDynamicDownsampler, x_start, x_end, reqpoints::AbstractFloat, args...
-)
-    return downsamp_req(ds, x_start, x_end, floor(Int, reqpoints), args...)
-end
-
 function downsamp_range_check(
     dts::AbstractDynamicDownsampler, x_start::Real, x_end::Real, ::Type{T} = Int32
 ) where {T<:Integer}
