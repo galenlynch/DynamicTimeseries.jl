@@ -167,9 +167,9 @@ function open_cache_file(
     end
 end
 
-function cacheinfo(a::CacheAccessor{<:Any,<:Any,<:Any,S}) where {S<:Number}
+function cacheinfo(a::CacheAccessor{<:Any,<:Any,<:Any,S,N}) where {S<:Number, N}
     cachedims = map(size, a.cachearrays)
-    return (S, a.cachepaths, cachedims)
+    return (S, N, a.cachepaths, cachedims)
 end
 
 function parse_cache_filenames(
