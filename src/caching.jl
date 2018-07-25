@@ -215,9 +215,9 @@ function validate_cache_arrays(
     last_len = baselength
     for carr in cachearrays
         l = size(carr, N)
-        if cld(last_len, l) != dec_factor
+        if cld(last_len, dec_factor) != l
             throw(ArgumentError(
-                "Cache arrays are not decreasing in size by a factor of $dec_factor"
+                "Cache arrays are not decreasing in size by a factor of $dec_factor: last was $last_len, this is $l"
             ))
         end
         last_len = l
