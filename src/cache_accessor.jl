@@ -60,7 +60,7 @@ function CacheAccessor(
     winput::DynamicWindower,
     sizehint::Integer = 70,
     autoclean::Bool = true;
-    fid::Integer = -1,
+    fid::Int = -1,
     cachedir::AbstractString = tempdir()
 ) where {D<:Downsampler}
     (cachepaths, E, cachedims) = write_cache_files(
@@ -77,8 +77,8 @@ function CacheAccessor(
     fs::Real,
     offset::Real = 0,
     args...;
-    f_overlap::Real = 0,
-    wmin::Integer = 1,
+    f_overlap::Float64 = 0.0,
+    wmin::Int = 1,
     kwargs...
 ) where {D<:Downsampler}
     CacheAccessor(

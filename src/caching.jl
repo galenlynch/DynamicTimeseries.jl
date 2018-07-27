@@ -2,7 +2,7 @@ const GL_CACHEPREFIX = "GLTSCACHE"
 
 cache_reg(fid::Integer, ::Type{T}) where {T<:Number} = Regex(
     string(
-        "^", GL_CACHEPREFIX, '_', fid, '_', T, '_', "_(\\d+)_([\\d_]+)\$"
+        "^.*?", GL_CACHEPREFIX, '_', fid, '_', T, "_(\\d+)_(\\d+)_([\\d_]+)\$"
     )
 )
 
@@ -155,8 +155,14 @@ end
 function open_cache_files(
     ::Type{T}, cachedir::AbstractString, fid::Integer
 ) where {T<:Number}
-    (fpaths, dims) = parse_cache_filenames(cachedir, fid, T, 2)
-    return open_cache_files(T, dims, fpaths, false)
+    files = joinpath.(cachedir, readdir(cachedir))
+    open_cache_files(T, files, fid)
+end
+function open_cache_files(
+    ::Type{T}, files::AbstractVector{<:AbstractString}, fid::Integer
+) where {T<:Number}
+    (fpaths, dims) = parse_cache_filenames(files, fid, T, 2)
+    return open_cache_files(T, dims, fpaths, false), fpaths
 end
 
 function open_cache_file(
@@ -173,9 +179,12 @@ function cacheinfo(a::CacheAccessor{<:Any,<:Any,<:Any,S,N}) where {S<:Number, N}
 end
 
 function parse_cache_filenames(
-    cachedir::AbstractString, fid::Integer, ::Type{T}, n::Integer
+    file_listing::AbstractVector{<:AbstractString},
+    fid::Integer,
+    ::Type{T},
+    n::Integer
 ) where {T<:Number}
-    matches = dir_match_files(cache_reg(fid, T), cachedir)
+    matches = dir_match_files(cache_reg(fid, T), file_listing)
     nm = length(matches)
 
     dims = Vector{NTuple{n, Int}}(nm)
@@ -184,14 +193,15 @@ function parse_cache_filenames(
     if nm > 0
         filenos = Vector{Int}(nm)
         for (i, m) in enumerate(matches)
-            filenos[i] = parse(Int, m[1])
-            dim_strs = split(m[2], '_')
+            parse(Int, m[2]) == n || error("Wrong dimensionality")
+            dim_strs = split(m[3], '_')
             length(dim_strs) == n || error("Did not find the correct number of dims")
+            filenos[i] = parse(Int, m[1])
             for j in 1:n
                 dim_scratch[j] = parse(Int, dim_strs[j])
             end
             dims[i] = (dim_scratch...)
-            fpaths[i] = joinpath(cachedir, m.match)
+            fpaths[i] = m.match
         end
         p = sortperm(filenos)
         fpaths = fpaths[p]
