@@ -146,7 +146,7 @@ function open_cache_files(
             autoclean && atexit(() -> rm(paths[dno]))
         end
     catch
-        autoclean && foreach(rm, cachepaths)
+        autoclean && foreach(rm, paths)
         retrhow()
     end
     return cachearr
@@ -162,7 +162,7 @@ function open_cache_files(
     ::Type{T}, files::AbstractVector{<:AbstractString}, fid::Integer
 ) where {T<:Number}
     (fpaths, dims) = parse_cache_filenames(files, fid, T, 2)
-    return open_cache_files(T, dims, fpaths, false), fpaths
+    open_cache_files(T, dims, fpaths, false), fpaths
 end
 
 function open_cache_file(
@@ -225,7 +225,7 @@ function validate_cache_arrays(
     last_len = baselength
     for carr in cachearrays
         l = size(carr, N)
-        if cld(last_len, dec_factor) != l
+        if cld(last_len, dec_factor) > l
             throw(ArgumentError(
                 "Cache arrays are not decreasing in size by a factor of $dec_factor: last was $last_len, this is $l"
             ))

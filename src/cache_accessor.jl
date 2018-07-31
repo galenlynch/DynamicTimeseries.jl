@@ -58,10 +58,10 @@ end
 function CacheAccessor(
     ::Type{D},
     winput::DynamicWindower,
-    sizehint::Integer = 70,
-    autoclean::Bool = true;
+    sizehint::Integer = 70;
+    autoclean::Bool = true,
     fid::Int = -1,
-    cachedir::AbstractString = tempdir()
+    cachedir::String = tempdir()
 ) where {D<:Downsampler}
     (cachepaths, E, cachedims) = write_cache_files(
         D, basedata(winput), sizehint, autoclean; fid = fid, cachedir = cachedir

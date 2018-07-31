@@ -150,7 +150,7 @@ srand(1)
                     (xs, mm, was_downsamped) = downsamp_req(cdt, 0, 10, 50)
                     (xs, mm, was_downsamped) = downsamp_req(cdt, 0, 100, 10)
                     @test time_interval(cdt) == (0.0, 100.0)
-                    cdt = CacheAccessor(MaxMin, A, fs, 0, maxpt, false)
+                    cdt = CacheAccessor(MaxMin, A, fs, 0, maxpt, autoclean = true)
                     (paths, E, dims) = write_cache_files(MaxMin, A, 10)
                     cdt_files = CacheAccessor(
                         MaxMin, A, fs, 0, Int, dims, paths, false
