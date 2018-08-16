@@ -101,7 +101,7 @@ function noreduce_dim_size(a::AbstractArray, dim::Integer)
         append!(el_dim_vec, dims)
         dims = el_dim_vec
     end
-    (dims...)
+    (dims...,)
 end
 
 function reduce_dim_size(a::AbstractArray{<:AbstractArray, <:Any})
@@ -122,7 +122,7 @@ function nested_arr_size(a::AbstractArray{<:AbstractArray, <:Any})
     else
         throw(ArgumentError("Empty array"))
     end
-    return (el_dims...)
+    return (el_dims...,)
 end
 nested_arr_size(a::AbstractArray{<:Number, <:Any}) = size(a)
 
@@ -138,7 +138,7 @@ function getindex(
     a::Averager{E, <:WindowedArray{<:Any, <:Any, N, <:Any}, false}, i::Integer
 ) where {E, N}
     v = a.winput[i]
-    squeeze(mean(v, N), N)::E
+    dropdims(Compat.Statistics.mean(v, dims = N); dims = N)::E
 end
 "Method meant for when N > 1 in WindowedArray"
 function getindex(
@@ -200,7 +200,7 @@ function downsamp_reduce_cache(
     end
     total_weight = sum(weights)
     reduced = weighted_mean_dim(ds, weights, N, total_weight)
-    squeezed = squeeze(reduced, N)
+    squeezed = dropdims(reduced, dims = N)
     return (squeezed, total_weight)
 end
 

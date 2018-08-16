@@ -1,17 +1,27 @@
-using GLTimeseries, PointProcesses
-using Base.Test
+using Compat, GLTimeseries, PointProcesses
 
-srand(1)
+@static if VERSION >= v"0.7.0-DEV.2575"
+    using Test, Random, Statistics
+    Random.seed!(1)
+else
+    using Base.Test
+    dropdims(
+        X;
+        dims = throw(Compat.UndefKeywordError(
+            "dropdims: keyword argument dims not assigned"
+        ))) = squeeze(X, dims)
+    srand(1)
+end
 
 @testset "GLTimeseries"  begin
 
-    const npt = 1000
-    const A = ones(Int, npt)
-    const B = rand(npt)
-    const C = rand(Float32, npt)
-    A[1:2:end] = 2
+    npt = 1000
+    A = ones(Int, npt)
+    B = rand(npt)
+    C = rand(Float32, npt)
+    A[1:2:end] .= 2
 
-    const fs = 10
+     fs = 10
 
     @testset "point_downsampler" begin
 
@@ -51,7 +61,7 @@ srand(1)
             mm2 = MaxMin(B, 10)
             mm2[1:-1]
             @test mm2[1] == extrema(B[1:10])
-            arr2d = Array{Float64, 2}(2, length(mm2))
+            @compat arr2d = Array{Float64, 2}(undef, 2, length(mm2))
             for (i, (emin, emax)) in enumerate(mm2)
                 arr2d[1, i] = emin
                 arr2d[2, i] = emax
@@ -74,10 +84,16 @@ srand(1)
             avg_overlap = Averager(B, 7, 3)
             @test avg_overlap[1] == mean(B[1:7])
             @test avg_overlap[2] == mean(B[5:11])
-            const E = rand(4, 8)
+             E = rand(4, 8)
             avg_2d = Averager(E, 5, 2)
-            @test avg_2d[1] == squeeze(mean(E[:, 1:5], 2), 2)
-            @test avg_2d[2] == squeeze(mean(E[:, 4:8], 2), 2)
+            @test avg_2d[1] == dropdims(
+                Compat.Statistics.mean(E[:, 1:5]; dims = 2);
+                dims = 2
+            )
+            @test avg_2d[2] == dropdims(
+                Compat.Statistics.mean(E[:, 4:8]; dims = 2);
+                dims = 2
+            )
             avg_int = Averager(A, 10)
             @test avg_int[1] == mean(A[1:10])
         end
@@ -121,7 +137,7 @@ srand(1)
         end
 
         @testset "CachingDynamicTs" begin
-            const maxpt = 10
+            maxpt = 10
             @testset "Caching" begin
                 wa = DynamicWindower(A, fs)
                 (path, npair) = write_cache_file(MaxMin, A)
@@ -158,11 +174,11 @@ srand(1)
                     cdt_files = CacheAccessor(
                         MaxMin, A, fs, 0, Int, dims, paths, false; checkfiles = false
                     )
-                    const npt_C = 10000
-                    const C = rand(10000)
-                    const fs_C = 100
-                    const dts_C = CacheAccessor(MaxMin, C, fs_C)
-                    const true_extrema = extrema(C)
+                    npt_C = 10000
+                     C = rand(10000)
+                     fs_C = 100
+                     dts_C = CacheAccessor(MaxMin, C, fs_C)
+                     true_extrema = extrema(C)
                     (xs, ys, _) = downsamp_req(dts_C, 0.0, 99.99, 74)
                     @test GLTimeseries.extrema_red(ys) == true_extrema
                 end
@@ -183,9 +199,9 @@ srand(1)
                     end
                 end
 
-                const fss = 40000
-                const D = rand(fss)
-                const bsize = 10
+                 fss = 40000
+                 D = rand(fss)
+                 bsize = 10
 
                 @testset "CachingStftPsd" begin
                     csp = CachingStftPsd(D, bsize, fss; f_overlap = 0.8)
@@ -222,11 +238,11 @@ srand(1)
 end
 
 @testset "spectrogram" begin
-    const ds = DynamicSpectrogram(A, fs, 0)
+     ds = DynamicSpectrogram(A, fs, 0)
     (t, (f, s, t_w, f_w)) = downsamp_req(ds, 0, 100, 2)
     (t, (f, s, t_w, f_w)) = downsamp_req(ds, 0, 0, 2)
     (t, (f, s, t_w, f_w)) = downsamp_req(ds, 0, 100, 0)
-    const ds32 = DynamicSpectrogram(C, fs, 0)
+     ds32 = DynamicSpectrogram(C, fs, 0)
     (t, (f, s, t_w, f_w)) = downsamp_req(ds32, 0, 100, 0)
 end
 

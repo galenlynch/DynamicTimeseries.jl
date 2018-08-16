@@ -1,5 +1,5 @@
 struct Stft{
-    E, W<:WindowedArray, P<:Base.DFT.Plan
+    E, W<:WindowedArray, P<:Plan
 } <: Downsampler{E, 1}
     winput::W
     fs::Float64
@@ -14,7 +14,7 @@ struct Stft{
     nout::Int
     function Stft{E, W, P}(
         winput::W, plan::P, fs::Float64, winfun::Function
-    ) where {E, W<:WindowedArray, P<:Base.DFT.Plan}
+    ) where {E, W<:WindowedArray, P<:Plan}
 
         nfft = length(plan)
         nout = div(nfft, 2) + 1
@@ -23,9 +23,9 @@ struct Stft{
 
         norm2 = sum(abs2, win)
         r = fs * norm2
-        r_temp = Vector{Float64}(1)
+        @compat r_temp = Vector{Float64}(undef, 1)
 
-        fftbuf = Vector{Complex{Float64}}(nout)
+        @compat fftbuf = Vector{Complex{Float64}}(undef, nout)
         winbuf = zeros(Float64, nfft)
 
         frequencies = collect(rfftfreq(nfft, fs))
@@ -48,7 +48,7 @@ end
 
 function Stft(
     winput::W, plan::P, fs::Real, winfun::Function = blackman
-) where {W<:WindowedArray{<:Any, <:Any, 1, <:Any}, P<:Base.DFT.Plan}
+) where {W<:WindowedArray{<:Any, <:Any, 1, <:Any}, P<:Plan}
     Stft{Vector{Complex{Float64}}, W, P}(
         winput, plan, convert(Float64, fs), winfun
     )
@@ -58,7 +58,7 @@ function Stft(
     winput::W, fs::Real = 1, args...
 ) where W<:WindowedArray{<:Any, <:Any, 1, <:Any}
     nfft = nextfastfft(winput.binsize)
-    plan = plan_rfft(Vector{Float64}(nfft))
+    @compat plan = plan_rfft(Vector{Float64}(undef, nfft))
     Stft(winput, plan, fs, args...)
 end
 
@@ -82,15 +82,21 @@ basedata(a::Stft) = basedata(a.winput)
 function getindex(a::Stft, i::Integer)
     out = make_out(a)
     getindex!(out, a, i)
+    out
 end
 
 function getindex!(out, a::Stft, i::Integer)
     @boundscheck checkbounds(a, i)
     window_index!(a, i)
-    A_mul_B!(out, a.plan, a.winbuf)
+    @static if VERSION >= v"0.7.0-DEV.2575"
+        mul!(out, a.plan, a.winbuf)
+    else
+        A_mul_B!(out, a.plan, a.winbuf)
+    end
+    nothing
 end
 
-make_out(a::Stft) = Vector{Complex{Float64}}(a.nout)
+@compat make_out(a::Stft) = Vector{Complex{Float64}}(undef, a.nout)
 
 function window_index!(a::Stft, i::Integer)
     v = a.winput[i]
@@ -122,7 +128,7 @@ function concrete_type(::Type{<:Stft}, ::Type{W}) where {W<:WindowedArray}
     return Stft{
         Vector{Float64},
         W,
-        rFFTWPlan{Float64, Base.DFT.FFTW.FORWARD, false, 1}
+        ConcretePlan
     }
 end
 length(a::Stft) = length(a.winput)
@@ -148,7 +154,7 @@ end
 StftPsd(stft::S) where S<:Stft = StftPsd{Vector{Float64}, S}(stft)
 StftPsd(args...) = StftPsd(Stft(args...))
 
-make_out(a::StftPsd) = Vector{Float64}(a.stft.nout)
+@compat make_out(a::StftPsd) = Vector{Float64}(undef, a.stft.nout)
 
 function getindex(s::StftPsd, i::Integer)
     dest = make_out(s)

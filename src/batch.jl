@@ -49,9 +49,9 @@ function downsamp_batch_mmap(
 
     outs = to_mmap.(arrs)
 
-    mm_arrs = Vector{typeof(outs[1][1])}(na)
+    @compat mm_arrs = Vector{typeof(outs[1][1])}(undef, na)
     offbytes = zeros(Int, na)
-    paths = Vector{String}(na)
+    @compat paths = Vector{String}(undef, na)
 
     for (i, (a, p)) in enumerate(outs)
         mm_arrs[i] = a
@@ -100,9 +100,9 @@ function cachefiles_batch_mmap(
     )
 
     # Destructure pmap output
-    cpaths = Vector{Vector{String}}(np)
-    ctypes = Vector{DataType}(np)
-    csizes = Vector{typeof(outs[1][3])}(np)
+    @compat cpaths = Vector{Vector{String}}(undef, np)
+    @compat ctypes = Vector{DataType}(undef, np)
+    @compat csizes = Vector{typeof(outs[1][3])}(undef, np)
     for (i, (cp, ct, cs)) in enumerate(outs)
         cpaths[i] = cp
         autoclean && atexit(() -> rm.(cp))

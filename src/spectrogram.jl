@@ -65,7 +65,11 @@ function downsamp_req(
     )
 
     first_x = ndx_to_t(ib_ex, fs(ds.winput), start_time(ds.winput))
-    times = S.time + first_x
+    @static if VERSION >= v"0.7.0-DEV.2575"
+        times = S.time .+ first_x
+    else
+        times = S.time + first_x
+    end
 
     t_width = length(times) > 1 ? times[2] - times[1] : win_l / srate
     f_width = length(S.freq) > 1 ? S.freq[2] - S.freq[1] : srate / 2

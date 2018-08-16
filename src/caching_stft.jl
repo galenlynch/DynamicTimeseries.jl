@@ -57,7 +57,7 @@ start_time(csp::CachingStftPsd) = start_time(csp.cacher)
 
 function downsamp_req(csp::CachingStftPsd, args...)
     (xs, ys, wd) = downsamp_req(csp.cacher, args...)
-    y_mat = cat(2, ys...)
+    y_mat = cat(ys...; dims = 2)
     sp = basedata(csp.cacher.winput)
     twidth = length(xs) > 1 ? xs[2] - xs[1] : sp.stft.winput.binsize / sp.stft.fs
     (xs, (frequencies(csp), y_mat, twidth, csp.fwidth), wd)

@@ -3,7 +3,6 @@ module GLTimeseries
 
 import Base:
     copy!,
-    linearindexing,
     length,
     size,
     getindex,
@@ -14,10 +13,36 @@ import Base:
 import GLUtilities: bin_bounds, time_interval, duration
 
 using
+    Compat,
     GLUtilities,
     DSP,
     PointProcesses,
     Missings
+
+@static if VERSION >= v"0.7.0-DEV.2575"
+    using FFTW, Statistics, Distributed, Mmap, LinearAlgebra
+    const Plan = AbstractFFTs.Plan
+    const ConcretePlan = FFTW.rFFTWPlan{Float64,-1,false,1}
+else
+    const Plan = Base.DFT.Plan
+    const ConcretePlan = Base.DFT.FFTW.rFFTWPlan{Float64, Base.DFT.FFTW.FORWARD, false, 1}
+    import Base.cat
+    cat(
+        X...;
+        dims = throw(UndefKeywordError(
+            "cat: keyword argument dims not assigned"
+        ))
+    ) = cat(dims, X...)
+end
+if VERSION < v"0.7.0-beta2.143"
+    dropdims(
+        X;
+        dims = throw(Compat.UndefKeywordError(
+            "dropdims: keyword argument dims not assigned"
+        ))
+    ) = squeeze(X, dims)
+end
+
 
 export
     # Constants

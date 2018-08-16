@@ -183,14 +183,14 @@ function exact_downsample(
     x_start::Real
 ) where {E}
     nbin = cld(nbase, binsize)
-    ys = Vector{E}(nbin)
+    @compat ys = Vector{E}(undef, nbin)
     for binno in 1:nbin
         (bin_start, bin_stop) = subselect_bin_bounds(
             bin_bounds(binno, binsize, nbase), i_begin
         )
         ys[binno], _ = reduce_downsample_caches(dts, bin_start, bin_stop)
     end
-    bbounds = Vector{NTuple{2, Int}}(nbin)
+    @compat bbounds = Vector{NTuple{2, Int}}(undef, nbin)
     bbounds .= bin_bounds.(1:nbin, binsize, nbase)
     xs = ndx_to_t(bin_center(bbounds), fs(dts.winput), x_start)
     return (xs, ys)
@@ -211,8 +211,8 @@ function reduce_downsample_caches(
     decno = min(floor(Int, log10(nbase)), length(dts.cachearrays))
     D_concrete = concrete_type(D, windowtype(W))
     if decno > 0
-        cached_ds = Vector{E}(3) # storage for left, right, and center
-        weights = Vector{Int}(3)
+        @compat cached_ds = Vector{E}(undef, 3) # storage for left, right, and center
+        @compat weights = Vector{Int}(undef, 3)
         n_input = length(basedata(dts.winput)) # number of original samples
 
 
@@ -313,6 +313,6 @@ function dec_ndx_to_ndx(is::NTuple{2, <:Integer}, dec::Integer)
     return (start_start, stop_stop)
 end
 function dec_ndx_to_ndx(is::AbstractVector{T}, dec::T) where T<:Integer
-    rs = Vector{NTuple{2, T}}(length(is))
+    @compat rs = Vector{NTuple{2, T}}(undef, length(is))
     @. rs = dec_ndx_to_ndx(is, T(10) ^ dec)
 end

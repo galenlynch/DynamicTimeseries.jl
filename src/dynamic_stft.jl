@@ -93,7 +93,7 @@ function downsamp_req(
         fwidth = base_psd.fwidth
         y_len = isempty(ys) ? 0 : length(ys[1])
         ny = length(ys)
-        y_mat = Array{eltype(eltype(ys)), 2}(y_len, ny)
+        @compat y_mat = Array{eltype(eltype(ys)), 2}(undef, y_len, ny)
         @inbounds @simd for i in 1:ny
             y_mat[:, i] = ys[i]
         end
@@ -109,7 +109,7 @@ function downsamp_req(
             downsampler = StftPsd(wa, ft.plan, ft.fs, ft.winfun)
             st = downsampler.stft
             out  = make_out(st)
-            out[:] = 0
+            out[:] .= 0
             v = st.winput[1]
             GLTimeseries.window_index!(st, 1)
             getindex!(out, st, 1)
@@ -120,7 +120,9 @@ function downsamp_req(
             freqs = downsampler.stft.frequencies
             fwidth = length(freqs) > 1 ? freqs[2] - freqs[1] : ft.fs / 2
         end
-        y_mat = Array{Float64, 2}(prod(elsize(downsampler)), length(downsampler))
+        @compat y_mat = Array{Float64, 2}(
+            undef, prod(elsize(downsampler)), length(downsampler)
+        )
         copy!(y_mat, downsampler)
     end
     if length(times) > 1

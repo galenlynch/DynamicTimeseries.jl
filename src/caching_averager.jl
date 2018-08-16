@@ -16,7 +16,7 @@ function prepare_cachefile(
         else
             push!(dim_vec, ds_len)
         end
-        cachedims = (dim_vec...)
+        cachedims = (dim_vec...,)
     end
     return cachedims, ds
 end
