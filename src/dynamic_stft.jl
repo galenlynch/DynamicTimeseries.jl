@@ -130,5 +130,5 @@ function downsamp_req(
     else
         twidth = binsize / fs(csp)
     end
-    (times, (frequencies(csp), y_mat, twidth, fwidth), was_downsampled)
+    (times, (freqs, y_mat, twidth, fwidth), was_downsampled)
 end
