@@ -27,7 +27,7 @@ point_averager(::P) where P<:Point = point_averager(P)
 # the function call itself is fine
 function merge_points(
     pm::MarkedPointMerger{A, <:Any, P},
-    pts::Points{<:Any, 1, A},
+    pts::Points{<:Any, 1, <:Any, A},
     xb,
     xe,
     resolution
@@ -38,14 +38,14 @@ end
 # Version to help the compiler do type inference
 function merge_points(
     pm::MarkedPointMerger{A, <:Any, P},
-    pts::VariablePoints{E, <:Any, M, <:Any},
+    pts::VariablePoints{E, I, <:Any, M, <:Any},
     xb,
     xe,
     resolution
-) where {E, M, A<:MarkedPoint{E, M}, F, N, P<:MarkedPoint{F, N}}
+) where {E, I, M, A<:MarkedPoint{E, M}, F, N, P<:MarkedPoint{F, N}}
     pm.outmap(
         pp_downsamp(pts, xb, xe, resolution, pm.mergefunc, P)
-    )::VariablePoints{F, NakedPoints{F, Vector{F}}, N, Vector{N}}
+    )::VariablePoints{F, I, NakedPoints{F, I, Vector{F}}, N, Vector{N}}
 end
 
 
@@ -54,7 +54,7 @@ struct DynamicPointDownsampler{
     PointType<:MarkedPoint{PointDimension, <:Any},
     MergedMarkType,
     MergerType<:MarkedPointMerger{PointType, MergedMarkType, <:Any},
-    P<:Points{PointDimension, 1, PointType}
+    P<:Points{PointDimension, 1, <:Any, PointType}
 } <: PointDownsampler{MergedMarkType}
     points::P
     merger::MergerType
@@ -66,14 +66,14 @@ end
         A<:MarkedPoint{F, <:Any},
         E,
         M<:MarkedPointMerger{A, E, <:Any},
-        P<:Points{F, 1, A}
+        P<:Points{F, 1, <:Any, A}
     }
         DynamicPointDownsampler{F, A, E, M, P}(points, merger)
     end
 end
 
 function DynamicPointDownsampler(
-    points::Points{<:Number, 1, M}
+    points::Points{<:Number, 1, <:Any, M}
 ) where M<:MarkedPoint
     DynamicPointDownsampler(points, point_extent_averager(M))
 end
@@ -123,7 +123,7 @@ function DynamicPointBoxer(
 end
 
 function DynamicPointBoxer(
-    points::Points{<:Number, 1, M}, args...
+    points::Points{<:Number, 1, <:Any, M}, args...
 ) where M<:MarkedPoint
     DynamicPointBoxer(
         DynamicPointDownsampler(points, point_extent_averager(M)), args...
