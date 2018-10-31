@@ -1,3 +1,4 @@
+# Should implement basedata, downsamp_req
 struct CacheAccessor{
     W<:DynamicWindower, E, D<:Downsampler, S<:Number, N
 } <: AbstractDynamicDownsampler{E}

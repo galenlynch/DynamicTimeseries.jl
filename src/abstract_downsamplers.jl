@@ -22,21 +22,38 @@ start_time
 """
 abstract type AbstractDynamicDownsampler{E} end
 
+"""
+    duration(a::AbstractDynamicDownsampler)
+
+Returns the duration of a, in seconds.
+"""
+duration(a::AbstractDynamicDownsampler) = baselength(a) / fs(a)
+
+"""
+    time_interval(a::AbstractDynamicDownsampler)
+
+Returns the start and stop time of a, in seconds.
+"""
+function time_interval(a::AbstractDynamicDownsampler)
+    st = start_time(a)
+    st, st + duration(a)
+end
+
 function downsamp_range_check(
     dts::AbstractDynamicDownsampler, x_start::Real, x_end::Real, ::Type{T} = Int32
 ) where {T<:Integer}
     x_start <= x_end || throw(ArgumentError("x_start must be before x_end"))
     nin = T(baselength(dts))
+
     # Find bounding indices
     d_fs = fs(dts)
-    d_ss = start_time(dts)
-    i_begin = t_to_ndx(x_start, d_fs, d_ss, T)
-    i_end = t_to_last_ndx(x_end, d_fs, d_ss, T)
+    d_bt, d_et = time_interval(dts)
+    clipped_start = max(d_bt, x_start)
+    clipped_end = min(d_et, x_end)
+    i_begin = t_to_ndx(clipped_start, d_fs, d_bt, T)
+    i_end = t_to_last_ndx(clipped_stop, d_fs, d_bt, T)
     in_range = i_begin <= nin && i_end >= 1
     i_begin_clipped = clip_ndx(i_begin, nin)
     i_end_clipped = clip_ndx(i_end, nin)
     return (in_range, i_begin_clipped::T, i_end_clipped::T)
 end
-
-duration(a::AbstractDynamicDownsampler) = baselength(a) / fs(a)
-time_interval(a::AbstractDynamicDownsampler) = (start_time(a), start_time(a) + duration(a))
