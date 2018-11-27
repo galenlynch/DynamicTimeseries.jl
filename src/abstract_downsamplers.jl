@@ -51,7 +51,7 @@ function downsamp_range_check(
     clipped_start = max(d_bt, x_start)
     clipped_end = min(d_et, x_end)
     i_begin = t_to_ndx(clipped_start, d_fs, d_bt, T)
-    i_end = t_to_last_ndx(clipped_stop, d_fs, d_bt, T)
+    i_end = t_to_last_ndx(clipped_end, d_fs, d_bt, T)
     in_range = i_begin <= nin && i_end >= 1
     i_begin_clipped = clip_ndx(i_begin, nin)
     i_end_clipped = clip_ndx(i_end, nin)
