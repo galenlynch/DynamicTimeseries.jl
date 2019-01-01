@@ -78,6 +78,7 @@ export
     downsamp_batch_mmap,
     extent,
     frequencies,
+    fs,
     getindex!,
     make_shifter,
     make_out,

@@ -23,7 +23,7 @@ function DynamicWindower(
     f_overlap::Real = 0,
     wmin::Integer = 1
 ) where {T,N,A<:AbstractArray{T,N}}
-    v = view_trailing_slice(input, 1:1)
+    v = view_trailing_slice(input, 1:0)
     return DynamicWindower{typeof(v),T,N,A}(
         input,
         convert(Float64, fs),
