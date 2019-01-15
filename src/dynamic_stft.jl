@@ -65,6 +65,7 @@ end
 fs(a::DynCachingStftPsd) = fs(a.winput)
 baselength(a::DynCachingStftPsd) = baselength(a.winput)
 start_time(a::DynCachingStftPsd) = start_time(a.winput)
+basedata(a::DynCachingStftPsd) = basedata(a.winput)
 
 function cache_accessor(a::DynCachingStftPsd{C, W}) where {
     W, E, C<:CachingStftPsd{E}
