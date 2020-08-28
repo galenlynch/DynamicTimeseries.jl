@@ -1,7 +1,7 @@
 name = "GLTimeseries"
 uuid = "1899e1d9-0e62-5b08-93e8-96938e3582a6"
 authors = ["Galen Lynch <galen.lynch@gmail.com>"]
-version = "0.1.0"
+version = "0.1.1"
 
 [deps]
 Compat = "34da2185-b29b-5c13-b0c7-acf172513d20"
@@ -24,4 +24,4 @@ FFTW = "0.2.4 - 1"
 GLUtilities = "0.0.5 - 0.1"
 Missings = "0.2 - 0.4"
 PointProcesses = "0.0.2 - 0.1"
-julia = "0.6 - 1"
+julia = "0.7 - 1"
