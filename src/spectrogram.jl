@@ -95,6 +95,6 @@ baselength(d::DynamicSpectrogram) = baselength(d.winput)
 start_time(d::DynamicSpectrogram) = start_time(d.winput)
 
 function extrema(d::DynamicSpectrogram)
-    freqs = rfftfreq(length(d.window), fs(d.winput))
+    freqs = FFTW.rfftfreq(length(d.window), fs(d.winput))
     return (freqs[1], freqs[end])
 end

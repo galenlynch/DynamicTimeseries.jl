@@ -28,7 +28,7 @@ struct Stft{
         @compat fftbuf = Vector{Complex{Float64}}(undef, nout)
         winbuf = zeros(Float64, nfft)
 
-        frequencies = collect(rfftfreq(nfft, fs))
+        frequencies = collect(FFTW.rfftfreq(nfft, fs))
 
         new(
             winput,
