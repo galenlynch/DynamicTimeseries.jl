@@ -35,7 +35,7 @@ function WindowedArray(
 end
 
 function validate_windower_args(
-    input_dims::NTuple{N,<:Integer}, binsize::Integer, overlap::Integer
+    input_dims::NTuple{N, Integer}, binsize::Integer, overlap::Integer
 ) where N
     input_len  = input_dims[N]
     if binsize < 1 || (input_len > 0 && binsize > input_len)
