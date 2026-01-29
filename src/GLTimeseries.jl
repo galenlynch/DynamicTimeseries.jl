@@ -1,22 +1,10 @@
 module GLTimeseries
 
-import Base:
-    copy!,
-    length,
-    size,
-    getindex,
-    setindex!,
-    extrema,
-    count
+import Base: copy!, length, size, getindex, setindex!, extrema, count
 
 import GLUtilities: bin_bounds, time_interval, duration
 
-using
-    Compat,
-    GLUtilities,
-    DSP,
-    PointProcesses,
-    Missings
+using Compat, GLUtilities, DSP, PointProcesses, Missings
 
 using FFTW, Statistics, Distributed, Mmap, LinearAlgebra
 const Plan = AbstractFFTs.Plan

@@ -1,8 +1,8 @@
 function prepare_cachefile(
     ::Type{A},
-    input::AbstractArray{<:Any, N},
-    reduce_dim::Bool = def_reduce(N)
-) where {A<:Averager, N}
+    input::AbstractArray{<:Any,N},
+    reduce_dim::Bool = def_reduce(N),
+) where {A<:Averager,N}
     ds = Averager(input, 10)
     el_dims = el_size(A, input, N, reduce_dim)
 

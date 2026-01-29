@@ -1,18 +1,17 @@
-struct MaxMin{T<:Number, W<:WindowedArray} <: Downsampler{Tuple{T, T}, 1}
+struct MaxMin{T<:Number,W<:WindowedArray} <: Downsampler{Tuple{T,T},1}
     winput::W
 
-    function MaxMin{T,W}(winput::W) where
-        {T<:Number, W<:WindowedArray{<:Any,T,1,<:Any}}
+    function MaxMin{T,W}(winput::W) where {T<:Number,W<:WindowedArray{<:Any,T,1,<:Any}}
         new(winput)
     end
 
-    function MaxMin{T,W}(winput::W) where
-        {T<:Number, S<:NTuple{2,T}, W<:WindowedArray{<:Any,S,<:Any,<:Any}}
+    function MaxMin{T,W}(
+        winput::W,
+    ) where {T<:Number,S<:NTuple{2,T},W<:WindowedArray{<:Any,S,<:Any,<:Any}}
         new(winput)
     end
 
-    function MaxMin{T,W}(winput::W) where
-        {T<:Number, W<:WindowedArray{<:Any,T,2,<:Any}}
+    function MaxMin{T,W}(winput::W) where {T<:Number,W<:WindowedArray{<:Any,T,2,<:Any}}
         if size(winput.input, 1) != 2
             throw(ArgumentError("assumes max and min are on first dimension"))
         end
@@ -20,16 +19,14 @@ struct MaxMin{T<:Number, W<:WindowedArray} <: Downsampler{Tuple{T, T}, 1}
     end
 end
 
-function MaxMin(a::W) where
-    {T<:Number, S<:NTuple{2, T}, W<:WindowedArray{<:Any,S,1,<:Any}}
+function MaxMin(a::W) where {T<:Number,S<:NTuple{2,T},W<:WindowedArray{<:Any,S,1,<:Any}}
     MaxMin{T,W}(a)
 end
-function MaxMin(a::W) where
-    {T<:Number, W<:WindowedArray{<:Any,T,<:Any,<:Any}}
+function MaxMin(a::W) where {T<:Number,W<:WindowedArray{<:Any,T,<:Any,<:Any}}
     MaxMin{T,W}(a)
 end
 
-function MaxMin(input::AbstractArray{<:Number, 2}, binsize::Integer)
+function MaxMin(input::AbstractArray{<:Number,2}, binsize::Integer)
     winput = WindowedArray(input, binsize)
     MaxMin(winput)
 end
@@ -39,20 +36,18 @@ function MaxMin(input::AbstractVector, binsize::Integer)
 end
 
 function concrete_type(
-    ::Type{D}, ::Type{W}, args...
-) where {D<:MaxMin, T, W<:WindowedArray{<:Any, T, <:Any, <:Any}}
-    return MaxMin{T, W}
+    ::Type{D},
+    ::Type{W},
+    args...,
+) where {D<:MaxMin,T,W<:WindowedArray{<:Any,T,<:Any,<:Any}}
+    return MaxMin{T,W}
 end
 
-function eltype_preview(
-    ::Type{<:MaxMin}, ::Type{<:AbstractVector{T}}
-) where {T<:Number}
+function eltype_preview(::Type{<:MaxMin}, ::Type{<:AbstractVector{T}}) where {T<:Number}
     Tuple{T,T}
 end
 
-function arr_eltype_preview(
-    ::Type{<:MaxMin}, ::Type{<:AbstractVector{T}}
-) where {T<:Number}
+function arr_eltype_preview(::Type{<:MaxMin}, ::Type{<:AbstractVector{T}}) where {T<:Number}
     T
 end
 
@@ -68,18 +63,14 @@ binsize(a::MaxMin) = binsize(a.winput)
 bin_bounds(a::MaxMin, args...) = bin_bounds(a.winput, args...)
 bin_bounds(i::Integer, a::MaxMin) = bin_bounds(i, a.winput)
 
-downsamp_reduce(::Type{<:MaxMin}, ds::AbstractArray{<:Number, 2}) = extrema_red(ds)
+downsamp_reduce(::Type{<:MaxMin}, ds::AbstractArray{<:Number,2}) = extrema_red(ds)
 
-function downsamp_reduce(
-    ::Type{<:MaxMin}, ds::AbstractVector{<:NTuple{2, <:Number}}
-)
+function downsamp_reduce(::Type{<:MaxMin}, ds::AbstractVector{<:NTuple{2,<:Number}})
     extrema_red(ds)
 end
 
 downsamp_reduce(::Type{<:MaxMin}, ds::AbstractVector{<:Number}) = extrema_red(ds)
 
-function downsamp_reduce(
-    ::Type{D}, ds::AbstractArray, ::AbstractVector
-) where D<:MaxMin
+function downsamp_reduce(::Type{D}, ds::AbstractArray, ::AbstractVector) where {D<:MaxMin}
     return (downsamp_reduce(D, ds), 0)
 end

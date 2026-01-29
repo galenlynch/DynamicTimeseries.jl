@@ -6,9 +6,9 @@ bin_bounds
 downsamp_reduce
 downsamp_reduce_cache
 """
-abstract type Downsampler{T, N} <: AbstractArray{T, N} end
+abstract type Downsampler{T,N} <: AbstractArray{T,N} end
 
-function downsamp_reduce_cache(::Type{D}, args...) where D<:Downsampler
+function downsamp_reduce_cache(::Type{D}, args...) where {D<:Downsampler}
     downsamp_reduce(D, args...)
 end
 
@@ -40,7 +40,10 @@ function time_interval(a::AbstractDynamicDownsampler)
 end
 
 function downsamp_range_check(
-    dts::AbstractDynamicDownsampler, x_start::Real, x_end::Real, ::Type{T} = Int32
+    dts::AbstractDynamicDownsampler,
+    x_start::Real,
+    x_end::Real,
+    ::Type{T} = Int32,
 ) where {T<:Integer}
     x_start <= x_end || throw(ArgumentError("x_start must be before x_end"))
     nin = T(baselength(dts))

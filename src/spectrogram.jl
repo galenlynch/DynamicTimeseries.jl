@@ -1,15 +1,14 @@
 abstract type AbstractDynamicSpectrogram{T} <:
-    AbstractDynamicDownsampler{Tuple{Vector{Float64}, Array{T, 2}, Float64, Float64}}
-end
+              AbstractDynamicDownsampler{Tuple{Vector{Float64},Array{T,2},Float64,Float64}} end
 
-struct DynamicSpectrogram{
-    T<:AbstractFloat, W<:DynamicWindower{<:Any,<:Number,1,<:Any}
-} <: AbstractDynamicSpectrogram{T}
+struct DynamicSpectrogram{T<:AbstractFloat,W<:DynamicWindower{<:Any,<:Number,1,<:Any}} <:
+       AbstractDynamicSpectrogram{T}
     winput::W
     winfun::Function
     window::Vector{Float64}
     function DynamicSpectrogram{T,W}(
-        winput::W, winfun::Function
+        winput::W,
+        winfun::Function,
     ) where {T<:AbstractFloat,W<:DynamicWindower{<:Any,<:Number,1,<:Any}}
         window = winfun(winput.wmin)::Vector{Float64}
         new(winput, winfun, window)
@@ -17,7 +16,8 @@ struct DynamicSpectrogram{
 end
 
 function DynamicSpectrogram(
-    winput::W, winfun::Function = blackman
+    winput::W,
+    winfun::Function = blackman,
 ) where {T,W<:DynamicWindower{<:Any,T,1,<:Any}}
     S = div_type(T)
     DynamicSpectrogram{S,W}(winput, winfun)
@@ -29,12 +29,9 @@ function DynamicSpectrogram(
     offset::Real = 0,
     overlap::Float64 = 0.8;
     min_window::Integer = 512,
-    winfun::Function = blackman
-) where {T<:Real, A<:AbstractVector{T}}
-    DynamicSpectrogram(
-        DynamicWindower(input, fs, offset, overlap, min_window),
-        winfun
-    )
+    winfun::Function = blackman,
+) where {T<:Real,A<:AbstractVector{T}}
+    DynamicSpectrogram(DynamicWindower(input, fs, offset, overlap, min_window), winfun)
 end
 
 """
@@ -45,8 +42,12 @@ selected range so the center of the first time bin is around xb, and the
 center of the last time bin is around xe.
 """
 function downsamp_req(
-    ds::DynamicSpectrogram{T, <:Any}, xb, xe, npt::Integer, args...;
-    windowfun::Function = blackman
+    ds::DynamicSpectrogram{T,<:Any},
+    xb,
+    xe,
+    npt::Integer,
+    args...;
+    windowfun::Function = blackman,
 ) where {T<:AbstractFloat}
     # Figure out what was asked of us
     win_l, overlap, ib_ex, ie_ex = downsamp_req_window_info(ds.winput, xb, xe, npt)
@@ -59,10 +60,7 @@ function downsamp_req(
 
     srate = fs(ds.winput)
 
-    S = spectrogram(
-        v, win_l, overlap;
-        fs = srate, window = window
-    )
+    S = spectrogram(v, win_l, overlap; fs = srate, window = window)
 
     first_x = ndx_to_t(ib_ex, fs(ds.winput), start_time(ds.winput))
     @static if VERSION >= v"0.7.0-DEV.2575"
@@ -78,15 +76,15 @@ function downsamp_req(
         times::StepRangeLen{
             Float64,
             Base.TwicePrecision{Float64},
-            Base.TwicePrecision{Float64}
+            Base.TwicePrecision{Float64},
         },
         (
             collect(S.freq)::Vector{Float64},
-            S.power::Array{T, 2},
+            S.power::Array{T,2},
             t_width::Float64,
-            f_width::Float64
+            f_width::Float64,
         ),
-        false
+        false,
     )
 end
 
