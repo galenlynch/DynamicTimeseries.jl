@@ -1,24 +1,22 @@
-module GLTimeseries
+module DynamicTimeseries
 
-import Base:
-    copy!,
-    length,
-    size,
-    getindex,
-    setindex!,
-    extrema,
-    count
+import Base: copy!, length, size, getindex, setindex!, extrema
 
-import GLUtilities: bin_bounds, time_interval, duration
+import SignalIndices: bin_bounds, time_interval, duration
 
-using
-    Compat,
-    GLUtilities,
-    DSP,
-    PointProcesses,
-    Missings
-
-using FFTW, Statistics, Distributed, Mmap, LinearAlgebra
+using DSP: DSP, blackman, nextfastfft, spectrogram, stft
+using Distributed: Distributed, pmap
+using FFTW: FFTW, AbstractFFTs, plan_rfft
+using SignalIndices: SignalIndices, bin_center, clip_ndx, copy_length_check, div_type,
+    n_ndx, ndx_to_t, t_to_last_ndx, t_to_ndx, view_trailing_slice, weighted_mean,
+    weighted_mean_dim
+using SortedIntervals: extrema_red
+using LinearAlgebra: LinearAlgebra, mul!
+using Mmap: Mmap
+using EventIntervals: EventIntervals, MarkedPoint, NakedPoints, Point, Points,
+    VariablePoints, point_values, points, pop_marks, pp_downsamp, pt_extent_merge,
+    pt_merge
+using Statistics: Statistics, mean
 const Plan = AbstractFFTs.Plan
 const ConcretePlan = FFTW.rFFTWPlan{Float64,-1,false,1}
 
@@ -71,6 +69,7 @@ export
     write_cache_file
 
 
+include("mmap_util.jl")
 include("util.jl")
 include("windower.jl")
 include("abstract_downsamplers.jl")

@@ -9,7 +9,7 @@ struct DynamicWindower{E,T,N,A<:AbstractArray{T,N}} <: AbstractDynamicDownsample
         fs::Float64,
         offset::Float64 = 0.0,
         f_overlap::Float64 = 0.0,
-        wmin::Int = 1
+        wmin::Int = 1,
     ) where {E,T,N,A<:AbstractArray{T,N}}
         validate_dynamic_windower_args(N, f_overlap, wmin, fs)
         return new(input, fs, offset, f_overlap, wmin)
@@ -21,7 +21,7 @@ function DynamicWindower(
     fs::Real,
     offset::Real = 0,
     f_overlap::Real = 0,
-    wmin::Integer = 1
+    wmin::Integer = 1,
 ) where {T,N,A<:AbstractArray{T,N}}
     v = view_trailing_slice(input, 1:0)
     return DynamicWindower{typeof(v),T,N,A}(
@@ -29,20 +29,21 @@ function DynamicWindower(
         convert(Float64, fs),
         convert(Float64, offset),
         convert(Float64, f_overlap),
-        convert(Int, wmin)
+        convert(Int, wmin),
     )
 end
 
 function validate_dynamic_windower_args(
-    N::Integer, f_overlap::AbstractFloat, wmin::Integer, fs::Real
+    N::Integer,
+    f_overlap::AbstractFloat,
+    wmin::Integer,
+    fs::Real,
 )
     if fs <= 0
         throw(ArgumentError("fs must be greater than zero"))
     end
     if f_overlap < 0 || f_overlap >= 1
-        throw(ArgumentError(
-            "f_overlap must be in interval [0, 1), but it is $f_overlap"
-        ))
+        throw(ArgumentError("f_overlap must be in interval [0, 1), but it is $f_overlap"))
     end
     if wmin < 1
         throw(ArgumentError("wmin must be at least one"))
@@ -65,16 +66,18 @@ start_time(d::DynamicWindower) = d.offset
     selected range so the center of the first time bin is around xb, and the
     center of the last time bin is around xe.
     """
-function downsamp_req(
-    ds::DynamicWindower, xb, xe, npt::Integer
-)
+function downsamp_req(ds::DynamicWindower, xb, xe, npt::Integer)
     win_l, overlap, ib_ex, ie_ex = downsamp_req_window_info(ds, xb, xe, npt)
     make_windowedarray(ds, win_l, overlap, ib_ex, ie_ex)
 end
 
 #TODO type unstable in a bad way
 function make_windowedarray(
-    ds::DynamicWindower{<:Any,<:Any,N,<:Any}, win_l, overlap, ib_ex, ie_ex
+    ds::DynamicWindower{<:Any,<:Any,N,<:Any},
+    win_l,
+    overlap,
+    ib_ex,
+    ie_ex,
 ) where {N}
     v = view_trailing_slice(ds.input, ib_ex:ie_ex)
     wa = WindowedArray(v, win_l, overlap)
@@ -87,7 +90,7 @@ function make_windowedarray(
     return times, wa, was_downsampled
 end
 
-function downsamp_req_window_info(ds::DynamicWindower, xb, xe, npt::S) where S
+function downsamp_req_window_info(ds::DynamicWindower, xb, xe, npt::S) where {S}
     (in_range, ib, ie) = downsamp_range_check(ds, xb, xe, S)
     nsel = n_ndx(ib, ie)
     if ! in_range || npt <= 0 || nsel == 0
@@ -98,9 +101,7 @@ function downsamp_req_window_info(ds::DynamicWindower, xb, xe, npt::S) where S
         overlap = zero(S)
     else
         nin = S(baselength(ds))
-        win_l_target = size_windows_expanded(
-            npt, nsel, nin, ds.f_overlap, S(ds.wmin)
-        )::S
+        win_l_target = size_windows_expanded(npt, nsel, nin, ds.f_overlap, S(ds.wmin))::S
 
         if win_l_target > nsel
             win_l = nsel::S
@@ -132,15 +133,13 @@ function downsamp_req_window_info(ds::DynamicWindower, xb, xe, npt::S) where S
             # where w is the number of windows
             npt_out = ceil(
                 S,
-                (ie - ib_ex + win_l - (win_l - one(S)) / S(2)) / (win_l - overlap)
+                (ie - ib_ex + win_l - (win_l - one(S)) / S(2)) / (win_l - overlap),
             )::S
 
             # Finally calculate the last bound, p
             # p = s + w*l - (w - 1)*d - 1
-            ie_ex = min(
-                nin,
-                ib_ex + npt_out * win_l - (npt_out - one(S)) * overlap - one(S)
-            )::S
+            ie_ex =
+                min(nin, ib_ex + npt_out * win_l - (npt_out - one(S)) * overlap - one(S))::S
         else
             ib_ex = ib
             ie_ex = ie
@@ -154,12 +153,12 @@ function size_windows_expanded(
     n_point::T,
     win_l_max::T = typemax(T),
     overlap_frac::Real = 0,
-    win_l_min::T = one(T)
-) where T<:Integer
+    win_l_min::T = one(T),
+) where {T<:Integer}
     n_win_max == 1 && return n_point
     n_overlap = floor(T, overlap_frac * win_l_min)
     if n_overlap == win_l_min
-        throw(ArgumentException("Overlap must be smaller than window"))
+        throw(ArgumentError("Overlap must be smaller than window"))
     end
 
     # let:
@@ -171,10 +170,7 @@ function size_windows_expanded(
     # => w = (N + l - d) / (l - d)
 
     # number of windows with minimum window length
-    n_win = div(
-        n_point + win_l_min - n_overlap,
-        win_l_min - n_overlap
-    )::T
+    n_win = div(n_point + win_l_min - n_overlap, win_l_min - n_overlap)::T
 
     if n_win > n_win_max
         # Too many windows: increase their size
@@ -182,10 +178,8 @@ function size_windows_expanded(
         # f := fraction of window to overlap (=> d = fl)
         # Substitute d = fl into the above, yielding:
         # l = N / (w - f * (w - 1) - 1)
-        win_l = cld(
-            n_point,
-            n_win_max - floor(T, overlap_frac * (n_win_max - one(T))) - one(T)
-        )
+        win_l =
+            cld(n_point, n_win_max - floor(T, overlap_frac * (n_win_max - one(T))) - one(T))
     else
         win_l = win_l_min
     end
@@ -194,9 +188,12 @@ function size_windows_expanded(
 end
 
 function size_windows_expanded(
-    nwm::Integer, np::Integer, wlmax::Integer, of::Real, wlmin::Integer
+    nwm::Integer,
+    np::Integer,
+    wlmax::Integer,
+    of::Real,
+    wlmin::Integer,
 )
     (nwm, np, wlmax, wlmin) = promote(nwm, np, wlmax, wlmin)
     size_windows_expanded(nwm, np, wlmax, of, wlmin)
 end
-

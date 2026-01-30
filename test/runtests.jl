@@ -1,19 +1,8 @@
-using Compat, GLTimeseries, PointProcesses
+using DynamicTimeseries, EventIntervals
+using Test, Random, Statistics
+Random.seed!(1)
 
-@static if VERSION >= v"0.7.0-DEV.2575"
-    using Test, Random, Statistics
-    Random.seed!(1)
-else
-    using Base.Test
-    dropdims(
-        X;
-        dims = throw(Compat.UndefKeywordError(
-            "dropdims: keyword argument dims not assigned"
-        ))) = squeeze(X, dims)
-    srand(1)
-end
-
-@testset "GLTimeseries"  begin
+@testset "DynamicTimeseries" begin
 
     npt = 1000
     A = ones(Int, npt)
@@ -21,7 +10,7 @@ end
     C = rand(Float32, npt)
     A[1:2:end] .= 2
 
-     fs = 10
+    fs = 10
 
     @testset "point_downsampler" begin
 
@@ -54,14 +43,14 @@ end
             mm = MaxMin(A, 10)
             @test length(mm) == 100
             @test size(mm) == (100,)
-            @test GLTimeseries.binsize(mm) == 10
+            @test DynamicTimeseries.binsize(mm) == 10
             @test mm[1] == (1, 2)
             @test mm[end] == (1, 2)
             mm[1:-1]
             mm2 = MaxMin(B, 10)
             mm2[1:-1]
             @test mm2[1] == extrema(B[1:10])
-            @compat arr2d = Array{Float64, 2}(undef, 2, length(mm2))
+            arr2d = Array{Float64,2}(undef, 2, length(mm2))
             for (i, (emin, emax)) in enumerate(mm2)
                 arr2d[1, i] = emin
                 arr2d[2, i] = emax
@@ -84,16 +73,12 @@ end
             avg_overlap = Averager(B, 7, 3)
             @test avg_overlap[1] == mean(B[1:7])
             @test avg_overlap[2] == mean(B[5:11])
-             E = rand(4, 8)
+            E = rand(4, 8)
             avg_2d = Averager(E, 5, 2)
-            @test avg_2d[1] == dropdims(
-                Compat.Statistics.mean(E[:, 1:5]; dims = 2);
-                dims = 2
-            )
-            @test avg_2d[2] == dropdims(
-                Compat.Statistics.mean(E[:, 4:8]; dims = 2);
-                dims = 2
-            )
+            @test avg_2d[1] ==
+                  dropdims(mean(E[:, 1:5]; dims = 2); dims = 2)
+            @test avg_2d[2] ==
+                  dropdims(mean(E[:, 4:8]; dims = 2); dims = 2)
             avg_int = Averager(A, 10)
             @test avg_int[1] == mean(A[1:10])
         end
@@ -144,12 +129,11 @@ end
                 (files, E, dims) = write_cache_files(MaxMin, A, 10)
                 @test E == Int
                 @test isa(files, Vector{String})
-                @test isa(dims, Vector{NTuple{2, Int}})
-                GLTimeseries.sort_cache_files(files, dims)
+                @test isa(dims, Vector{NTuple{2,Int}})
+                DynamicTimeseries.sort_cache_files(files, dims)
                 cachedir = tempdir()
-                (files, E, lengths) = write_cache_files(
-                    MaxMin, A, 10, true;
-                    cachedir=cachedir, fid=1)
+                (files, E, lengths) =
+                    write_cache_files(MaxMin, A, 10, true; cachedir = cachedir, fid = 1)
                 cachearr = open_cache_files(Int, cachedir, 1)
             end
 
@@ -168,19 +152,25 @@ end
                     @test time_interval(cdt) == (0.0, 100.0)
                     cdt = CacheAccessor(MaxMin, A, fs, 0, maxpt, autoclean = true)
                     (paths, E, dims) = write_cache_files(MaxMin, A, 10)
+                    cdt_files = CacheAccessor(MaxMin, A, fs, 0, Int, dims, paths, false)
                     cdt_files = CacheAccessor(
-                        MaxMin, A, fs, 0, Int, dims, paths, false
-                    )
-                    cdt_files = CacheAccessor(
-                        MaxMin, A, fs, 0, Int, dims, paths, false; checkfiles = false
+                        MaxMin,
+                        A,
+                        fs,
+                        0,
+                        Int,
+                        dims,
+                        paths,
+                        false;
+                        checkfiles = false,
                     )
                     npt_C = 10000
-                     C = rand(10000)
-                     fs_C = 100
-                     dts_C = CacheAccessor(MaxMin, C, fs_C)
-                     true_extrema = extrema(C)
+                    C = rand(10000)
+                    fs_C = 100
+                    dts_C = CacheAccessor(MaxMin, C, fs_C)
+                    true_extrema = extrema(C)
                     (xs, ys, _) = downsamp_req(dts_C, 0.0, 99.99, 74)
-                    @test GLTimeseries.extrema_red(ys) == true_extrema
+                    @test DynamicTimeseries.extrema_red(ys) == true_extrema
                 end
 
                 @testset "Averager" begin
@@ -199,15 +189,15 @@ end
                     end
                 end
 
-                 fss = 40000
-                 D = rand(fss)
-                 bsize = 10
+                fss = 40000
+                D = rand(fss)
+                bsize = 10
 
                 @testset "CachingStftPsd" begin
                     csp = CachingStftPsd(D, bsize, fss; f_overlap = 0.8)
                     println("Time interval for caching psd is ", time_interval(csp))
                     (xs, av, wd) = downsamp_req(csp, 0, 1, 1)
-                    (xs, av, wd) = downsamp_req(csp, 0, bsize / fss , 1)
+                    (xs, av, wd) = downsamp_req(csp, 0, bsize / fss, 1)
                 end
 
                 @testset "DynCachingStftPsd" begin
@@ -231,23 +221,23 @@ end
                 (xs, mm, wd) = downsamp_req(mds, 0, 1, 0)
             end
         end
-    @testset "batch" begin
-        As = [rand(200) for i in 1:10]
-        dts_arr = downsamp_batch_mmap(MaxMin, As, 10)
+        @testset "batch" begin
+            As = [rand(200) for i = 1:10]
+            dts_arr = downsamp_batch_mmap(MaxMin, As, 10)
+        end
     end
-end
 
-@testset "spectrogram" begin
-     ds = DynamicSpectrogram(A, fs, 0)
-    (t, (f, s, t_w, f_w)) = downsamp_req(ds, 0, 100, 2)
-    (t, (f, s, t_w, f_w)) = downsamp_req(ds, 0, 0, 2)
-    (t, (f, s, t_w, f_w)) = downsamp_req(ds, 0, 100, 0)
-     ds32 = DynamicSpectrogram(C, fs, 0)
-    (t, (f, s, t_w, f_w)) = downsamp_req(ds32, 0, 100, 0)
-end
+    @testset "spectrogram" begin
+        ds = DynamicSpectrogram(A, fs, 0)
+        (t, (f, s, t_w, f_w)) = downsamp_req(ds, 0, 100, 2)
+        (t, (f, s, t_w, f_w)) = downsamp_req(ds, 0, 0, 2)
+        (t, (f, s, t_w, f_w)) = downsamp_req(ds, 0, 100, 0)
+        ds32 = DynamicSpectrogram(C, fs, 0)
+        (t, (f, s, t_w, f_w)) = downsamp_req(ds32, 0, 100, 0)
+    end
 
-@testset "util" begin
-    @test extent(A) == 1.0
-    @test extent([A, A]) == [1.0, 1.0]
-end
+    @testset "util" begin
+        @test extent(A) == 1.0
+        @test extent([A, A]) == [1.0, 1.0]
+    end
 end

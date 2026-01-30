@@ -1,7 +1,7 @@
-# GLTimeseries
+# DynamicTimeseries [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://galenlynch.github.io/DynamicTimeseries.jl/stable/) [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://galenlynch.github.io/DynamicTimeseries.jl/dev/) [![Build Status](https://github.com/galenlynch/DynamicTimeseries.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/galenlynch/DynamicTimeseries.jl/actions/workflows/CI.yml?query=branch%3Amain) [![Coverage](https://codecov.io/gh/galenlynch/DynamicTimeseries.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/galenlynch/DynamicTimeseries.jl)
 
-[![Build Status](https://travis-ci.org/galenlynch/GLTimeseries.jl.svg?branch=master)](https://travis-ci.org/galenlynch/GLTimeseries.jl)
+Efficient time series processing and downsampling for neural data.
 
-[![Coverage Status](https://coveralls.io/repos/galenlynch/GLTimeseries.jl/badge.svg?branch=master&service=github)](https://coveralls.io/github/galenlynch/GLTimeseries.jl?branch=master)
+## Citing
 
-[![codecov.io](http://codecov.io/github/galenlynch/GLTimeseries.jl/coverage.svg?branch=master)](http://codecov.io/github/galenlynch/GLTimeseries.jl?branch=master)
+See [`CITATION.bib`](CITATION.bib) for the relevant reference(s).
