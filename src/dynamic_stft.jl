@@ -103,7 +103,7 @@ function downsamp_req(
             out = make_out(st)
             out[:] .= 0
             v = st.winput[1]
-            DynamicTimeseries.window_index!(st, 1)
+            window_index!(st, 1)
             getindex!(out, st, 1)
             freqs = frequencies(csp)
             fwidth = base_psd.fwidth
