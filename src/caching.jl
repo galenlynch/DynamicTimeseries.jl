@@ -16,7 +16,7 @@ function write_cache_file(
         (cachedims, cachedata) = prepare_cachefile(D, input)
     end
     ndim = length(cachedims)
-    @compat dim_els = Vector{String}(undef, ndim + 1)
+    dim_els = Vector{String}(undef, ndim + 1)
     dim_els[1] = string(ndim)
     for i = 1:ndim
         dim_els[i+1] = string(cachedims[i])
@@ -71,12 +71,12 @@ function write_cache_files(
     if sizehint < nsamp
         # Preallocate
         ndecade = convert(Int, ceil(log10(nsamp / sizehint)))
-        @compat cachepaths = Vector{String}(undef, ndecade)
+        cachepaths = Vector{String}(undef, ndecade)
 
         # Make first cache file
         dname = base_prefix * "_1"
         (cachepaths[1], cachedim) = write_cache_file(D, input, autoclean, dname, false)
-        @compat cachedims = Vector{typeof(cachedim)}(undef, ndecade)
+        cachedims = Vector{typeof(cachedim)}(undef, ndecade)
         cachedims[1] = cachedim
         cachearr = open_cache_file(E, cachedims[1], cachepaths[1])
         # Make subsequent cache files
@@ -134,7 +134,7 @@ function open_cache_files(
 ) where {N,E<:Number}
     ndecade = length(paths)
     length(dims) == ndecade || error("paths and dims must be same length")
-    @compat cachearr = Vector{Array{E,N}}(undef, ndecade)
+    cachearr = Vector{Array{E,N}}(undef, ndecade)
     try
         for dno = 1:ndecade
             cachearr[dno] = open_cache_file(E, dims[dno], paths[dno])
@@ -188,11 +188,11 @@ function parse_cache_filenames(
     matches = only_matches(cache_reg(fid, T), file_listing)
     nm = length(matches)
 
-    @compat dims = Vector{NTuple{n,Int}}(undef, nm)
-    @compat dim_scratch = Vector{Int}(undef, n)
-    @compat fpaths = Vector{String}(undef, nm)
+    dims = Vector{NTuple{n,Int}}(undef, nm)
+    dim_scratch = Vector{Int}(undef, n)
+    fpaths = Vector{String}(undef, nm)
     if nm > 0
-        @compat filenos = Vector{Int}(undef, nm)
+        filenos = Vector{Int}(undef, nm)
         for (i, m) in enumerate(matches)
             parse(Int, m[2]) == n || error("Wrong dimensionality")
             dim_strs = split(m[3], '_')
@@ -240,7 +240,7 @@ function sort_cache_files(
     cachedims::AbstractVector{<:NTuple{N,<:Integer}},
 ) where {N}
     nf = length(cachepaths)
-    @compat cachelengths = Vector{Int}(undef, nf)
+    cachelengths = Vector{Int}(undef, nf)
     for (i, dims) in enumerate(cachedims)
         cachelengths[i] = dims[N]
     end

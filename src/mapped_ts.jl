@@ -4,15 +4,6 @@ struct MappedDynamicDownsampler{E,D<:AbstractDynamicDownsampler{E}} <:
     fmap::Function
 end
 
-@static if VERSION < v"0.7.0-DEV.2575"
-    function MappedDynamicDownsampler(
-        d::D,
-        fmap::Function,
-    ) where {E,D<:AbstractDynamicDownsampler{E}}
-        return MappedDynamicDownsampler{E,D}(d, fmap)
-    end
-end
-
 function downsamp_req(
     mdds::D,
     xb,

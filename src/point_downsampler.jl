@@ -56,21 +56,6 @@ struct DynamicPointDownsampler{
     merger::MergerType
 end
 
-@static if VERSION < v"0.7.0-DEV.2575"
-    function DynamicPointDownsampler(
-        points::P,
-        merger::M,
-    ) where {
-        F,
-        A<:MarkedPoint{F,<:Any},
-        E,
-        M<:MarkedPointMerger{A,E,<:Any},
-        P<:Points{F,1,<:Any,A},
-    }
-        DynamicPointDownsampler{F,A,E,M,P}(points, merger)
-    end
-end
-
 function DynamicPointDownsampler(points::Points{<:Number,1,<:Any,M}) where {M<:MarkedPoint}
     DynamicPointDownsampler(points, point_extent_averager(M))
 end
@@ -136,9 +121,9 @@ function downsamp_req(
     # but I will make it the left point inplace
     ptvals, marks, _ = downsamp_req(dp.pointdownsampler, xb, xe, res)
     npt = length(ptvals)
-    @compat heights = Vector{PtRangeT}(undef, npt)
+    heights = Vector{PtRangeT}(undef, npt)
     bottoms = similar(heights)
-    @compat widths = Vector{PtDomainT}(undef, npt)
+    widths = Vector{PtDomainT}(undef, npt)
     min_half_width = dp.min_width / 2
     for (i, ((bb, be), height)) in enumerate(marks)
         bottoms[i] = dp.y_center - height / 2

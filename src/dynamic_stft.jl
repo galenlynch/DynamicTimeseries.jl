@@ -86,7 +86,7 @@ function downsamp_req(
         fwidth = base_psd.fwidth
         y_len = isempty(ys) ? 0 : length(ys[1])
         ny = length(ys)
-        @compat y_mat = Array{eltype(eltype(ys)),2}(undef, y_len, ny)
+        y_mat = Array{eltype(eltype(ys)),2}(undef, y_len, ny)
         @inbounds @simd for i = 1:ny
             y_mat[:, i] = ys[i]
         end
@@ -112,7 +112,7 @@ function downsamp_req(
             freqs = downsampler.stft.frequencies
             fwidth = length(freqs) > 1 ? freqs[2] - freqs[1] : ft.fs / 2
         end
-        @compat y_mat =
+        y_mat =
             Array{Float64,2}(undef, prod(elsize(downsampler)), length(downsampler))
         copy!(y_mat, downsampler)
     end

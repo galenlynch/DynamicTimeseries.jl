@@ -24,9 +24,9 @@ struct Stft{E,W<:WindowedArray,P<:Plan} <: Downsampler{E,1}
 
         norm2 = sum(abs2, win)
         r = fs * norm2
-        @compat r_temp = Vector{Float64}(undef, 1)
+        r_temp = Vector{Float64}(undef, 1)
 
-        @compat fftbuf = Vector{Complex{Float64}}(undef, nout)
+        fftbuf = Vector{Complex{Float64}}(undef, nout)
         winbuf = zeros(Float64, nfft)
 
         frequencies = collect(FFTW.rfftfreq(nfft, fs))
@@ -50,7 +50,7 @@ function Stft(
     args...,
 ) where {W<:WindowedArray{<:Any,<:Any,1,<:Any}}
     nfft = nextfastfft(winput.binsize)
-    @compat plan = plan_rfft(Vector{Float64}(undef, nfft))
+    plan = plan_rfft(Vector{Float64}(undef, nfft))
     Stft(winput, plan, fs, args...)
 end
 
@@ -80,15 +80,11 @@ end
 function getindex!(out, a::Stft, i::Integer)
     @boundscheck checkbounds(a, i)
     window_index!(a, i)
-    @static if VERSION >= v"0.7.0-DEV.2575"
-        mul!(out, a.plan, a.winbuf)
-    else
-        A_mul_B!(out, a.plan, a.winbuf)
-    end
+    mul!(out, a.plan, a.winbuf)
     nothing
 end
 
-@compat make_out(a::Stft) = Vector{Complex{Float64}}(undef, a.nout)
+make_out(a::Stft) = Vector{Complex{Float64}}(undef, a.nout)
 
 function window_index!(a::Stft, i::Integer)
     v = a.winput[i]
@@ -143,7 +139,7 @@ end
 StftPsd(stft::S) where {S<:Stft} = StftPsd{Vector{Float64},S}(stft)
 StftPsd(args...) = StftPsd(Stft(args...))
 
-@compat make_out(a::StftPsd) = Vector{Float64}(undef, a.stft.nout)
+make_out(a::StftPsd) = Vector{Float64}(undef, a.stft.nout)
 
 function getindex(s::StftPsd, i::Integer)
     dest = make_out(s)

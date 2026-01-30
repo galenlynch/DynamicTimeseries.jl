@@ -1,18 +1,6 @@
-using Compat, GLTimeseries, PointProcesses
-
-@static if VERSION >= v"0.7.0-DEV.2575"
-    using Test, Random, Statistics
-    Random.seed!(1)
-else
-    using Base.Test
-    dropdims(
-        X;
-        dims = throw(
-            Compat.UndefKeywordError("dropdims: keyword argument dims not assigned"),
-        ),
-    ) = squeeze(X, dims)
-    srand(1)
-end
+using GLTimeseries, PointProcesses
+using Test, Random, Statistics
+Random.seed!(1)
 
 @testset "GLTimeseries" begin
 
@@ -62,7 +50,7 @@ end
             mm2 = MaxMin(B, 10)
             mm2[1:-1]
             @test mm2[1] == extrema(B[1:10])
-            @compat arr2d = Array{Float64,2}(undef, 2, length(mm2))
+            arr2d = Array{Float64,2}(undef, 2, length(mm2))
             for (i, (emin, emax)) in enumerate(mm2)
                 arr2d[1, i] = emin
                 arr2d[2, i] = emax
@@ -88,9 +76,9 @@ end
             E = rand(4, 8)
             avg_2d = Averager(E, 5, 2)
             @test avg_2d[1] ==
-                  dropdims(Compat.Statistics.mean(E[:, 1:5]; dims = 2); dims = 2)
+                  dropdims(mean(E[:, 1:5]; dims = 2); dims = 2)
             @test avg_2d[2] ==
-                  dropdims(Compat.Statistics.mean(E[:, 4:8]; dims = 2); dims = 2)
+                  dropdims(mean(E[:, 4:8]; dims = 2); dims = 2)
             avg_int = Averager(A, 10)
             @test avg_int[1] == mean(A[1:10])
         end

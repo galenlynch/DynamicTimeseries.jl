@@ -1,12 +1,22 @@
 module GLTimeseries
 
-import Base: copy!, length, size, getindex, setindex!, extrema, count
+import Base: copy!, length, size, getindex, setindex!, extrema
 
 import GLUtilities: bin_bounds, time_interval, duration
 
-using Compat, GLUtilities, DSP, PointProcesses, Missings
-
-using FFTW, Statistics, Distributed, Mmap, LinearAlgebra
+using DSP: DSP, blackman, nextfastfft, spectrogram, stft
+using Distributed: Distributed, pmap
+using FFTW: FFTW, AbstractFFTs, plan_rfft
+using GLUtilities: GLUtilities, bin_center, clip_ndx, copy_length_check, div_type,
+    extrema_red, n_ndx, ndx_to_t, only_matches, t_to_last_ndx, t_to_ndx, to_mmap,
+    view_trailing_slice, weighted_mean, weighted_mean_dim
+using LinearAlgebra: LinearAlgebra, mul!
+using Missings: Missings
+using Mmap: Mmap
+using PointProcesses: PointProcesses, MarkedPoint, NakedPoints, Point, Points,
+    VariablePoints, point_values, points, pop_marks, pp_downsamp, pt_extent_merge,
+    pt_merge
+using Statistics: Statistics, mean
 const Plan = AbstractFFTs.Plan
 const ConcretePlan = FFTW.rFFTWPlan{Float64,-1,false,1}
 

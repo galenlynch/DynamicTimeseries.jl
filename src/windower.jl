@@ -91,7 +91,7 @@ function bin_bounds(i::T, a::WindowedArray) where {T<:Integer}
 end
 
 function bin_bounds(a::WindowedArray, ::Type{T} = Int32) where {T<:Integer}
-    @compat bnds = Vector{NTuple{2,T}}(undef, length(a))
+    bnds = Vector{NTuple{2,T}}(undef, length(a))
     for i in eachindex(a)
         bnds[i] = bin_bounds(T(i), a)
     end

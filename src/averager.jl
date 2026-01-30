@@ -129,7 +129,7 @@ function getindex(
     i::Integer,
 ) where {E,N}
     v = a.winput[i]
-    dropdims(Compat.Statistics.mean(v, dims = N); dims = N)::E
+    dropdims(mean(v, dims = N); dims = N)::E
 end
 "Method meant for when N > 1 in WindowedArray"
 function getindex(
